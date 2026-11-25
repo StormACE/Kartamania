@@ -155,7 +155,7 @@ namespace Kartamania
                         Player.Finished = true;
                         Player.FinishOrder = ++finishCounter;
                         Player.FinishTime = Time;
-                        Say("VICTOIRE PAR ELIMINATION!");
+                        Say(Loc.Get("FEAT_VICTORY_ELIM"));
                     }
                 }
 
@@ -261,7 +261,7 @@ namespace Kartamania
                 k.Finished = true;
                 k.FinishOrder = ++finishCounter;
                 k.FinishTime = Time;
-                Say(k.Name + " TERMINE " + Ordinal(k.FinishOrder) + "!");
+                Say(k.Name + Loc.Get("MSG_FINISHED") + Loc.Ordinal(k.FinishOrder) + "!");
             }
         }
 
@@ -271,7 +271,7 @@ namespace Kartamania
             k.Progress = k.Lap * Track.N + k.Idx + along;
         }
 
-        static string Ordinal(int n) => n == 1 ? "1ER" : n + "E";
+
 
         // ------------------------------------------------------------------ IA
 
@@ -509,7 +509,7 @@ namespace Kartamania
                 v.ShieldTimer = 0f;
                 v.Invuln = 0.8f;
                 Burst(v.Pos, Color.Cyan, 12, 220f);
-                Say(v.Name + " BLOQUE " + weapon + "!");
+                Say(v.Name + Loc.Get("MSG_BLOCKED") + weapon + "!");
                 return;
             }
 
@@ -526,11 +526,11 @@ namespace Kartamania
                 if (attacker != null && attacker != v)
                 {
                     attacker.Kills++;
-                    Say(attacker.Name + " ELIMINE " + v.Name + "!");
+                    Say(attacker.Name + Loc.Get("MSG_ELIMINATED") + v.Name + "!");
                 }
                 else
                 {
-                    Say(v.Name + " S'EST ELIMINE!");
+                    Say(v.Name + Loc.Get("MSG_SELF_ELIM"));
                 }
             }
             else
@@ -539,7 +539,7 @@ namespace Kartamania
                 v.Invuln = 3.5f;
                 v.Speed *= 0.15f;
                 v.Vel *= 0.3f;
-                if (attacker != null && attacker != v) Say(attacker.Name + " TOUCHE " + v.Name);
+                if (attacker != null && attacker != v) Say(attacker.Name + Loc.Get("MSG_HIT") + v.Name);
             }
         }
 
@@ -660,7 +660,7 @@ namespace Kartamania
             k.OffRoad = false;
             UpdateProgress(k);
             Burst(k.Pos, Color.Cyan, 12, 200f);
-            Say(k.Name + " REMIS SUR LA PISTE!");
+            Say(k.Name + Loc.Get("MSG_RESPAWN"));
         }
 
         // ------------------------------------------------------------------ classement, effets

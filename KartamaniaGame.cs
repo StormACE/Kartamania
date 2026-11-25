@@ -12,10 +12,9 @@ namespace Kartamania
     public sealed class KartamaniaGame : Game
     {
         enum State { Menu, Racing, Paused, Results }
-        enum Row { Play, Track, Player, Difficulty, Laps, Pilots, Resolution, Display, VSync, Fps, Quit }
+        enum Row { Play, Track, Player, Difficulty, Laps, Pilots, Resolution, Display, VSync, Fps, Language, Quit }
 
         static readonly Row[] Rows = (Row[])Enum.GetValues(typeof(Row));
-        static readonly string[] DifficultyNames = { "FACILE", "NORMAL", "DIFFICILE" };
         static readonly float[] DifficultyStrength = { 0.80f, 0.91f, 1.00f };
         static readonly Color[] KartColors =
         {
@@ -79,6 +78,7 @@ namespace Kartamania
         protected override void Initialize()
         {
             cfg = GameSettings.Load();
+            Loc.Set(cfg.Language);
             BuildResolutionList();
             ApplyGraphics();
             base.Initialize();
@@ -151,7 +151,7 @@ namespace Kartamania
             faces = FaceLoader.LoadAll(GraphicsDevice, out faceWarning);
             hasPhotos = faces.Count > 0;
             if (!hasPhotos)
-                faces.Add(new FaceInfo { Name = "JOUEUR", Texture = FaceLoader.MakePlaceholder(GraphicsDevice, KartColors[0]), IsPlaceholder = true });
+                faces.Add(new FaceInfo { Name = Loc.Get("PLAYER"), Texture = FaceLoader.MakePlaceholder(GraphicsDevice, KartColors[0]), IsPlaceholder = true });
 
             botFaces = new Texture2D[6];
             for (int i = 0; i < botFaces.Length; i++)
@@ -251,7 +251,7 @@ namespace Kartamania
                     else if (enter) StartRace();
                     break;
                 case Row.Difficulty:
-                    if (dir != 0) cfg.Difficulty = M.Wrap(cfg.Difficulty + dir, DifficultyNames.Length);
+                    if (dir != 0) cfg.Difficulty = M.Wrap(cfg.Difficulty + dir, DifficultyStrength.Length);
                     else if (enter) StartRace();
                     break;
                 case Row.Laps:
@@ -284,6 +284,14 @@ namespace Kartamania
                         ApplyGraphics();
                     }
                     break;
+                case Row.Language:
+                    if (dir != 0 || enter)
+                    {
+                        cfg.Language = M.Wrap(cfg.Language + 1, 2);
+                        Loc.Set(cfg.Language);
+                        cfg.Save();
+                    }
+                    break;
                 case Row.Quit:
                     if (enter) { cfg.Save(); Exit(); }
                     break;
@@ -298,7 +306,7 @@ namespace Kartamania
             cfg.Save();
             var racers = new List<RacerInfo>();
             FaceInfo me = faces[cfg.Player];
-            racers.Add(new RacerInfo { Name = me.Name, Face = me.Texture, Color = KartColors[0], IsPlayer = true });
+            racers.Add(new RacerInfo { Name = me.IsPlaceholder ? Loc.Get("PLAYER") : me.Name, Face = me.Texture, Color = KartColors[0], IsPlayer = true });
 
             var others = faces.Where(f => f != me && !f.IsPlaceholder).OrderBy(f => rng.Next()).Take(cfg.RacerCount - 1).ToList();
             int colorIdx = 1;
@@ -310,7 +318,7 @@ namespace Kartamania
             {
                 racers.Add(new RacerInfo
                 {
-                    Name = "ROBOT " + (bot + 1),
+                    Name = Loc.Get("ROBOT") + " " + (bot + 1),
                     Face = botFaces[bot % botFaces.Length],
                     Color = KartColors[colorIdx++ % KartColors.Length],
                 });
@@ -439,20 +447,16 @@ namespace Kartamania
 
         // Commandes affichées : boutons d'une manette Xbox si une manette est branchée, sinon clavier.
         string[] MenuHint() => pad.IsConnected
-            ? new[] { "STICK G OU CROIX: CHOISIR   GAUCHE/DROITE: CHANGER   A: VALIDER", "Y: PLEIN ECRAN" }
-            : new[] { "HAUT/BAS: CHOISIR   GAUCHE/DROITE: CHANGER   ENTREE: VALIDER", "F11: PLEIN ECRAN   ECHAP: QUITTER" };
+            ? new[] { Loc.Get("HINT_MENU_PAD_1"), Loc.Get("HINT_MENU_PAD_2") }
+            : new[] { Loc.Get("HINT_MENU_KB_1"), Loc.Get("HINT_MENU_KB_2") };
 
-        string RaceHint() => pad.IsConnected
-            ? "STICK G: TOURNER   GACHETTE D: ACCELERER   GACHETTE G: FREINER   X: ARME   START: PAUSE"
-            : "FLECHES/WASD: CONDUIRE   ESPACE: ARME   ECHAP: PAUSE";
+        string RaceHint() => pad.IsConnected ? Loc.Get("HINT_RACE_PAD") : Loc.Get("HINT_RACE_KB");
 
         string[] PauseHint() => pad.IsConnected
-            ? new[] { "START: REPRENDRE", "Y: RECOMMENCER", "B: MENU" }
-            : new[] { "ECHAP: REPRENDRE", "R: RECOMMENCER", "M: MENU" };
+            ? new[] { Loc.Get("HINT_PAUSE_PAD_1"), Loc.Get("HINT_PAUSE_PAD_2"), Loc.Get("HINT_PAUSE_PAD_3") }
+            : new[] { Loc.Get("HINT_PAUSE_KB_1"), Loc.Get("HINT_PAUSE_KB_2"), Loc.Get("HINT_PAUSE_KB_3") };
 
-        string ResultsHint() => pad.IsConnected
-            ? "A: MENU   Y: REJOUER"
-            : "ENTREE: MENU   R: REJOUER";
+        string ResultsHint() => pad.IsConnected ? Loc.Get("HINT_RESULTS_PAD") : Loc.Get("HINT_RESULTS_KB");
 
         static string FormatTime(float t) =>
             string.Format(CultureInfo.InvariantCulture, "{0:00}:{1:00.0}", (int)(t / 60f), t % 60f);
@@ -508,19 +512,20 @@ namespace Kartamania
         {
             switch (r)
             {
-                case Row.Play: return "JOUER";
-                case Row.Track: return "PISTE: < " + tracks[cfg.Track].Def.Name + " >";
-                case Row.Player: return "JOUEUR: < " + faces[cfg.Player].Name + " >";
-                case Row.Difficulty: return "DIFFICULTE: < " + DifficultyNames[cfg.Difficulty] + " >";
-                case Row.Laps: return "TOURS: < " + cfg.Laps + " >";
-                case Row.Pilots: return "PILOTES: < " + cfg.RacerCount + " >";
+                case Row.Play: return Loc.Get("ROW_PLAY");
+                case Row.Track: return Loc.Get("LABEL_TRACK") + ": < " + Loc.TrackName(tracks[cfg.Track].Def.Name) + " >";
+                case Row.Player: return Loc.Get("LABEL_PLAYER") + ": < " + (faces[cfg.Player].IsPlaceholder ? Loc.Get("PLAYER") : faces[cfg.Player].Name) + " >";
+                case Row.Difficulty: return Loc.Get("LABEL_DIFFICULTY") + ": < " + Loc.Get("DIFFICULTY_" + cfg.Difficulty) + " >";
+                case Row.Laps: return Loc.Get("LABEL_LAPS") + ": < " + cfg.Laps + " >";
+                case Row.Pilots: return Loc.Get("LABEL_PILOTS") + ": < " + cfg.RacerCount + " >";
                 case Row.Resolution: return "RESOLUTION: < " + resolutions[resIdx].X + "X" + resolutions[resIdx].Y + " >";
-                case Row.Display: return "AFFICHAGE: < " + (cfg.Fullscreen ? "PLEIN ECRAN" : "FENETRE") + " >";
-                case Row.VSync: return "VSYNC: < " + (cfg.VSync ? "OUI" : "NON") + " >";
+                case Row.Display: return Loc.Get("LABEL_DISPLAY") + ": < " + Loc.Get(cfg.Fullscreen ? "FULLSCREEN" : "WINDOW") + " >";
+                case Row.VSync: return "VSYNC: < " + Loc.Get(cfg.VSync ? "YES" : "NO") + " >";
                 case Row.Fps:
                     int cap = GameSettings.FpsCaps[cfg.FpsIndex];
-                    return "LIMITE FPS: < " + (cap > 0 ? cap.ToString() : "ILLIMITE") + " >";
-                default: return "QUITTER";
+                    return Loc.Get("LABEL_FPS_LIMIT") + ": < " + (cap > 0 ? cap.ToString() : Loc.Get("UNLIMITED")) + " >";
+                case Row.Language: return Loc.Get("LANGUAGE") + ": < " + (cfg.Language == 0 ? "FRANCAIS" : "ENGLISH") + " >";
+                default: return Loc.Get("QUIT");
             }
         }
 
@@ -543,7 +548,7 @@ namespace Kartamania
 
             float lx = w * 0.06f;
             Text("KARTAMANIA", lx, h * 0.12f, T(13), new Color(255, 215, 60));
-            Text("COURSE DE KART POUR TOUTE LA FAMILLE", lx, h * 0.12f + T(13) * 6.5f, T(3), Color.White * 0.85f);
+            Text(Loc.Get("SUBTITLE"), lx, h * 0.12f + T(13) * 6.5f, T(3), Color.White * 0.85f);
 
             int ts = T(4);
             float y = h * 0.34f;
@@ -562,19 +567,19 @@ namespace Kartamania
             Rect(panel.X, panel.Y, panel.Width, panel.Height, Color.Black * 0.35f);
 
             Track tr = tracks[cfg.Track];
-            Text(tr.Def.Name, panel.X + panel.Width * 0.5f, panel.Y + T(14), T(4), Color.White, true);
+            Text(Loc.TrackName(tr.Def.Name), panel.X + panel.Width * 0.5f, panel.Y + T(14), T(4), Color.White, true);
             var mapRect = new Rectangle(panel.X + T(30), panel.Y + T(60), panel.Width - T(60), (int)(panel.Height * 0.42f));
             DrawMiniTrack(tr, mapRect, T(9));
 
             FaceInfo me = faces[cfg.Player];
             float faceY = panel.Y + panel.Height * 0.62f;
             Face(me.Texture, new Vector2(panel.X + panel.Width * 0.5f, faceY), T(130), 0f, Color.White);
-            Text(me.Name, panel.X + panel.Width * 0.5f, faceY + T(80), T(4), Color.White, true);
+            Text(me.IsPlaceholder ? Loc.Get("PLAYER") : me.Name, panel.X + panel.Width * 0.5f, faceY + T(80), T(4), Color.White, true);
 
             if (!hasPhotos)
             {
-                Text("AJOUTE TES PHOTOS DANS LE DOSSIER FACES", panel.X + panel.Width * 0.5f, panel.Y + panel.Height - T(60), T(2.5f), new Color(255, 215, 60), true);
-                Text("(PNG OU JPG, UN FICHIER PAR PERSONNE)", panel.X + panel.Width * 0.5f, panel.Y + panel.Height - T(36), T(2.5f), Color.White * 0.8f, true);
+                Text(Loc.Get("ADD_PHOTOS"), panel.X + panel.Width * 0.5f, panel.Y + panel.Height - T(60), T(2.5f), new Color(255, 215, 60), true);
+                Text(Loc.Get("PHOTO_FORMAT"), panel.X + panel.Width * 0.5f, panel.Y + panel.Height - T(36), T(2.5f), Color.White * 0.8f, true);
             }
             else
             {
@@ -768,12 +773,12 @@ namespace Kartamania
                 int ts = T(5);
                 int lh = PixelFont.LineHeight(ts);
                 float gap = 6f * u;
-                Text("TOUR " + Math.Min(Math.Max(p.Lap + 1, 1), race.TotalLaps) + "/" + race.TotalLaps, m, m, ts, Color.White);
+                Text(Loc.Get("HUD_LAP") + Math.Min(Math.Max(p.Lap + 1, 1), race.TotalLaps) + "/" + race.TotalLaps, m, m, ts, Color.White);
                 float posY = m + lh + gap;
                 Text("POS " + p.Place + "/" + race.Karts.Count, m, posY, ts, new Color(255, 215, 60));
                 int ls = T(2.5f);
                 float lblY = posY + lh + gap;
-                Text("POINTS DE VIE", m, lblY, ls, Color.White * 0.85f);
+                Text(Loc.Get("HUD_HEALTH"), m, lblY, ls, Color.White * 0.85f);
                 float dotY = lblY + PixelFont.LineHeight(ls) + 4f * u + 13f * u;
                 for (int i = 0; i < Kart.MaxHp; i++)
                     Disc(new Vector2(m + 14f * u + i * 34f * u, dotY), 26f * u, i < p.Hp ? Color.Red : Color.White * 0.25f);
@@ -795,7 +800,7 @@ namespace Kartamania
                     case ItemType.Missile: Disc(ic, 50f * u, new Color(220, 40, 40)); Disc(ic + new Vector2(0f, -22f * u), 22f * u, Color.White); name = "MISSILE"; break;
                     case ItemType.Mine: Disc(ic, 54f * u, Color.Black); Disc(ic, 22f * u, Color.Red); name = "MINE"; break;
                     case ItemType.Boost: Disc(ic, 54f * u, Color.Orange); Disc(ic, 28f * u, Color.Yellow); name = "TURBO"; break;
-                    case ItemType.Shield: Disc(ic, 54f * u, Color.Cyan * 0.8f); Disc(ic, 34f * u, Color.White * 0.5f); name = "BOUCLIER"; break;
+                    case ItemType.Shield: Disc(ic, 54f * u, Color.Cyan * 0.8f); Disc(ic, 34f * u, Color.White * 0.5f); name = Loc.Get("ITEM_SHIELD"); break;
                 }
                 if (name.Length > 0) Text(name, cx, m + bs * 0.78f, T(2.5f), Color.White, true);
                 else Text("-", cx, m + bs * 0.38f, T(6), Color.White * 0.4f, true);
@@ -856,8 +861,8 @@ namespace Kartamania
                     if (!k.Finished && !k.Eliminated) remaining++;
                 if (remaining > 0)
                 {
-                    string msg = "EN ATTENTE DES AUTRES PILOTES : " + remaining + " EN COURSE";
-                    string hint = pad.IsConnected ? "A: TERMINER LA COURSE" : "ENTREE: TERMINER LA COURSE";
+                    string msg = Loc.Get("WAITING") + remaining + Loc.Get("RACING");
+                    string hint = pad.IsConnected ? Loc.Get("END_RACE_PAD") : Loc.Get("END_RACE_KB");
                     Text(msg, w * 0.5f, h * 0.30f, T(4), new Color(255, 215, 60), true);
                     Text(hint, w * 0.5f, h * 0.30f + T(4) * 8f, T(3), Color.White * 0.9f, true);
                 }
@@ -872,7 +877,7 @@ namespace Kartamania
         {
             Rect(0, 0, W, H, Color.Black * 0.6f);
             Text("PAUSE", W * 0.5f, H * 0.22f, T(14), Color.White, true);
-            Text("COMMANDES", W * 0.5f, H * 0.44f, T(4), new Color(255, 215, 60), true);
+            Text(Loc.Get("CONTROLS"), W * 0.5f, H * 0.44f, T(4), new Color(255, 215, 60), true);
             HintPanel(new[] { RaceHint() }, W * 0.5f, H * 0.63f, T(3), Color.White);
 
             string[] opts = PauseHint();
@@ -887,14 +892,15 @@ namespace Kartamania
             Rect(0, 0, w, h, Color.Black * 0.68f);
             Kart p = race.Player;
 
-            string title = p.Eliminated ? "ELIMINE!" : (p.Place == 1 ? "VICTOIRE!" : "COURSE TERMINEE");
+            string title = p.Eliminated ? Loc.Get("RESULT_ELIMINATED")
+                : (p.Place == 1 ? Loc.Get("RESULT_VICTORY") : Loc.Get("RESULT_FINISHED"));
             Color tc = p.Eliminated ? Color.OrangeRed : (p.Place == 1 ? new Color(255, 215, 60) : Color.White);
             Text(title, w * 0.5f, h * 0.04f, T(11), tc, true);
 
             float best = cfg.GetBestTime(race.Track.Def.Name, race.TotalLaps);
-            string bestLine = "MEILLEUR TEMPS " + race.TotalLaps + " TOURS : " + (best > 0f ? FormatTime(best) : "--:--.-");
+            string bestLine = Loc.Get("BEST_TIME") + race.TotalLaps + Loc.Get("BEST_LAPS") + (best > 0f ? FormatTime(best) : "--:--.-");
             Text(bestLine, w * 0.5f, h * 0.115f, T(4), new Color(255, 215, 60), true);
-            if (newRecord) Text("NOUVEAU RECORD!", w * 0.5f, h * 0.155f, T(3), new Color(120, 255, 120), true);
+            if (newRecord) Text(Loc.Get("NEW_RECORD"), w * 0.5f, h * 0.155f, T(3), new Color(120, 255, 120), true);
 
             int count = Math.Max(1, race.Ranking.Count);
             float top = h * 0.20f;
@@ -926,8 +932,8 @@ namespace Kartamania
 
                 string status;
                 if (k.Finished) status = FormatTime(k.FinishTime);
-                else if (k.Eliminated) status = "ELIMINE";
-                else status = "TOUR " + Math.Min(Math.Max(k.Lap + 1, 1), race.TotalLaps);
+                else if (k.Eliminated) status = Loc.Get("ELIMINATED");
+                else status = Loc.Get("RESULT_LAP") + Math.Min(Math.Max(k.Lap + 1, 1), race.TotalLaps);
                 string kills = k.Kills > 0 ? "  X" + k.Kills : "";
                 string right = status + kills;
                 Text(right, statusRight - PixelFont.Measure(right, ts), cy + textYOff, ts,

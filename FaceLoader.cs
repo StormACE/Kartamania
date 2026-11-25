@@ -51,9 +51,9 @@ namespace Kartamania
             }
             catch (Exception ex)
             {
-                warning = "DOSSIER FACES ILLISIBLE: " + ex.Message;
+                warning = Loc.Get("FACES_UNREADABLE") + ex.Message;
             }
-            if (failed > 0) warning = failed + " PHOTO(S) ILLISIBLE(S)";
+            if (failed > 0) warning = failed + Loc.Get("PHOTOS_UNREADABLE");
             return result;
         }
 

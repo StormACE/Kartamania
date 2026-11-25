@@ -8,6 +8,7 @@ player=0
 difficulty=2
 laps=1
 pilots=10
+language=0
 best=Circuit du Salon|3|73.845634
 best=Circuit du Salon|1|37.06123
 best=Lac du Chalet|1|32.538033
