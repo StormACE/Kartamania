@@ -50,6 +50,7 @@ namespace Kartamania
         Vector2 camPos;
         float camAngle, camRot, zoom = 1f;
         Matrix camMatrix = Matrix.Identity;
+        Kart camTarget;
 
         readonly Random rng = new Random();
         readonly Stopwatch fpsWatch = Stopwatch.StartNew();
@@ -326,6 +327,7 @@ namespace Kartamania
             }
 
             race = new Race(tracks[cfg.Track], racers, cfg.Laps, DifficultyStrength[cfg.Difficulty], rng);
+            camTarget = null;
             camAngle = race.Player.Angle;
             camPos = race.Player.Pos + race.Player.Heading * 260f;
             steerSmooth = 0f;
@@ -362,6 +364,22 @@ namespace Kartamania
             };
         }
 
+        Kart ViewKart()
+        {
+            if (camTarget != null && !camTarget.Eliminated) return camTarget;
+            return race.Player;
+        }
+
+        void CycleView(int dir)
+        {
+            var karts = new List<Kart>();
+            foreach (Kart k in race.Karts)
+                if (!k.Eliminated) karts.Add(k);
+            if (karts.Count <= 1) return;
+            int idx = karts.IndexOf(ViewKart());
+            camTarget = karts[M.Wrap(idx + dir, karts.Count)];
+        }
+
         void UpdateRace(float dt)
         {
             if (Press(Keys.Escape) || PadPress(Buttons.Start) || !IsActive)
@@ -373,11 +391,18 @@ namespace Kartamania
             race.Update(dt, ReadInput(dt));
 
             Kart p = race.Player;
-            Vector2 target = p.Pos + p.Heading * 260f;
-            camPos = Vector2.Lerp(camPos, target, 1f - (float)Math.Exp(-9f * dt));
-            camAngle += M.WrapAngle(p.Angle - camAngle) * (1f - (float)Math.Exp(-5f * dt));
+            bool waitingView = !race.Over && (p.Finished || p.Eliminated);
+            if (waitingView && Press(Keys.Tab))
+                CycleView(kb.IsKeyDown(Keys.LeftShift) || kb.IsKeyDown(Keys.RightShift) ? -1 : 1);
+            if (waitingView && PadPress(Buttons.DPadRight)) CycleView(1);
+            if (waitingView && PadPress(Buttons.DPadLeft)) CycleView(-1);
 
-            if (!race.Over && (p.Finished || p.Eliminated))
+            Kart view = ViewKart();
+            Vector2 target = view.Pos + view.Heading * 260f;
+            camPos = Vector2.Lerp(camPos, target, 1f - (float)Math.Exp(-9f * dt));
+            camAngle += M.WrapAngle(view.Angle - camAngle) * (1f - (float)Math.Exp(-5f * dt));
+
+            if (waitingView)
             {
                 bool waiting = false;
                 foreach (Kart k in race.Karts)
@@ -863,8 +888,11 @@ namespace Kartamania
                 {
                     string msg = Loc.Get("WAITING") + remaining + Loc.Get("RACING");
                     string hint = pad.IsConnected ? Loc.Get("END_RACE_PAD") : Loc.Get("END_RACE_KB");
+                    string viewHint = pad.IsConnected ? Loc.Get("VIEW_HINT_PAD") : Loc.Get("VIEW_HINT_KB");
                     Text(msg, w * 0.5f, h * 0.30f, T(4), new Color(255, 215, 60), true);
                     Text(hint, w * 0.5f, h * 0.30f + T(4) * 8f, T(3), Color.White * 0.9f, true);
+                    Text(viewHint, w * 0.5f, h * 0.30f + T(4) * 16f, T(3), Color.White * 0.85f, true);
+                    Text(Loc.Get("VIEW_LABEL") + ViewKart().Name, w * 0.5f, h * 0.30f + T(4) * 24f, T(3), new Color(255, 215, 60), true);
                 }
             }
 
