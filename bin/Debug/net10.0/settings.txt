@@ -1,0 +1,9 @@
+width=1920
+height=1080
+fullscreen=0
+vsync=1
+fps=1
+track=0
+player=0
+difficulty=2
+laps=1

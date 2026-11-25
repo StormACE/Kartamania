@@ -1,0 +1,899 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
+using System.Linq;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+
+namespace Kartamania
+{
+    public sealed class KartamaniaGame : Game
+    {
+        enum State { Menu, Racing, Paused, Results }
+        enum Row { Play, Track, Player, Difficulty, Laps, Resolution, Display, VSync, Fps, Quit }
+
+        static readonly Row[] Rows = (Row[])Enum.GetValues(typeof(Row));
+        static readonly string[] DifficultyNames = { "FACILE", "NORMAL", "DIFFICILE" };
+        static readonly float[] DifficultyStrength = { 0.80f, 0.91f, 1.00f };
+        static readonly Color[] KartColors =
+        {
+            new Color(220, 50, 50), new Color(60, 110, 230), new Color(60, 180, 80), new Color(240, 200, 40),
+            new Color(150, 80, 200), new Color(240, 130, 30), new Color(40, 190, 200), new Color(235, 110, 170),
+        };
+
+        readonly GraphicsDeviceManager gfx;
+        SpriteBatch sb;
+        Texture2D pixel, disc;
+
+        GameSettings cfg;
+        readonly List<Point> resolutions = new List<Point>();
+        int resIdx;
+
+        List<FaceInfo> faces;
+        Texture2D[] botFaces;
+        string faceWarning = "";
+        bool hasPhotos;
+        Track[] tracks;
+
+        State state = State.Menu;
+        int sel;
+        Race race;
+
+        KeyboardState kb, pkb;
+        GamePadState pad, ppad;
+        float steerSmooth;
+        float anim;
+        float stickRepeatX, stickRepeatY;   // temporisation de répétition du stick dans le menu
+
+        Vector2 camPos;
+        float camAngle, camRot, zoom = 1f;
+        Matrix camMatrix = Matrix.Identity;
+
+        readonly Random rng = new Random();
+        readonly Stopwatch fpsWatch = Stopwatch.StartNew();
+        int fpsFrames, fps;
+
+        int W => GraphicsDevice.Viewport.Width;
+        int H => GraphicsDevice.Viewport.Height;
+        /// <summary>Taille de texte proportionnelle à la hauteur de l'écran (base = 1080p).</summary>
+        int T(float basePx) => Math.Max(1, (int)Math.Round(basePx * H / 1080f));
+
+        public KartamaniaGame()
+        {
+            gfx = new GraphicsDeviceManager(this);
+            // Plein écran "sans bordure" au lieu du mode exclusif : évite l'écran noir
+            // et la fenêtre qui se minimise toute seule sur les écrans 4K / haute densité.
+            gfx.HardwareModeSwitch = false;
+            // La police vectorielle garde une texture d'atlas : on la réinitialise si le périphérique change.
+            gfx.DeviceResetting += (s, e) => PixelFont.Reset();
+            IsMouseVisible = false;
+            Window.Title = "Kartamania";
+            Exiting += (s, e) => cfg?.Save();
+        }
+
+        // ================================================================== initialisation
+
+        protected override void Initialize()
+        {
+            cfg = GameSettings.Load();
+            BuildResolutionList();
+            ApplyGraphics();
+            base.Initialize();
+        }
+
+        void BuildResolutionList()
+        {
+            DisplayMode desktop = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+            foreach (DisplayMode m in GraphicsAdapter.DefaultAdapter.SupportedDisplayModes)
+            {
+                if (m.Width < 1024 || m.Height < 576) continue;
+                var p = new Point(m.Width, m.Height);
+                if (!resolutions.Contains(p)) resolutions.Add(p);
+            }
+            Point[] standard = { new Point(1280, 720), new Point(1600, 900), new Point(1920, 1080), new Point(2560, 1440), new Point(3840, 2160) };
+            foreach (Point p in standard)
+                if (p.X <= desktop.Width && p.Y <= desktop.Height && !resolutions.Contains(p)) resolutions.Add(p);
+            if (resolutions.Count == 0) resolutions.Add(new Point(1280, 720));
+
+            resolutions.Sort((a, b) =>
+            {
+                int c = (a.X * a.Y).CompareTo(b.X * b.Y);
+                return c != 0 ? c : a.X.CompareTo(b.X);
+            });
+
+            resIdx = resolutions.FindIndex(p => p.X == cfg.Width && p.Y == cfg.Height);
+            if (resIdx < 0)
+            {
+                // Résolution sauvegardée introuvable : on prend la plus proche de 1080p.
+                int best = int.MaxValue;
+                for (int i = 0; i < resolutions.Count; i++)
+                {
+                    int d = Math.Abs(resolutions[i].X * resolutions[i].Y - 1920 * 1080);
+                    if (d < best) { best = d; resIdx = i; }
+                }
+                cfg.Width = resolutions[resIdx].X;
+                cfg.Height = resolutions[resIdx].Y;
+            }
+        }
+
+        void ApplyGraphics()
+        {
+            gfx.PreferredBackBufferWidth = resolutions[resIdx].X;
+            gfx.PreferredBackBufferHeight = resolutions[resIdx].Y;
+            gfx.IsFullScreen = cfg.Fullscreen;
+            gfx.SynchronizeWithVerticalRetrace = cfg.VSync;
+            gfx.ApplyChanges();
+
+            int cap = GameSettings.FpsCaps[cfg.FpsIndex];
+            if (cap > 0)
+            {
+                IsFixedTimeStep = true;
+                TargetElapsedTime = TimeSpan.FromSeconds(1.0 / cap);
+            }
+            else
+            {
+                IsFixedTimeStep = false;
+            }
+        }
+
+        protected override void LoadContent()
+        {
+            sb = new SpriteBatch(GraphicsDevice);
+
+            pixel = new Texture2D(GraphicsDevice, 1, 1);
+            pixel.SetData(new[] { Color.White });
+
+            disc = MakeDisc(128);
+
+            faces = FaceLoader.LoadAll(GraphicsDevice, out faceWarning);
+            hasPhotos = faces.Count > 0;
+            if (!hasPhotos)
+                faces.Add(new FaceInfo { Name = "JOUEUR", Texture = FaceLoader.MakePlaceholder(GraphicsDevice, KartColors[0]), IsPlaceholder = true });
+
+            botFaces = new Texture2D[6];
+            for (int i = 0; i < botFaces.Length; i++)
+                botFaces[i] = FaceLoader.MakePlaceholder(GraphicsDevice, KartColors[(i + 1) % KartColors.Length]);
+
+            tracks = TrackLibrary.All().Select(d => new Track(d)).ToArray();
+            cfg.Track = M.Wrap(cfg.Track, tracks.Length);
+            cfg.Player = M.Wrap(cfg.Player, faces.Count);
+        }
+
+        Texture2D MakeDisc(int size)
+        {
+            var data = new Color[size * size];
+            float r = size * 0.5f;
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = x + 0.5f - r, dy = y + 0.5f - r;
+                    float a = M.Clamp(r - (float)Math.Sqrt(dx * dx + dy * dy), 0f, 1f);
+                    data[y * size + x] = Color.White * a;
+                }
+            var t = new Texture2D(GraphicsDevice, size, size);
+            t.SetData(data);
+            return t;
+        }
+
+        // ================================================================== mise à jour
+
+        bool Press(Keys k) => kb.IsKeyDown(k) && !pkb.IsKeyDown(k);
+        bool PadPress(Buttons b) => pad.IsConnected && pad.IsButtonDown(b) && !ppad.IsButtonDown(b);
+
+        protected override void Update(GameTime gameTime)
+        {
+            float dt = Math.Min((float)gameTime.ElapsedGameTime.TotalSeconds, 0.05f);
+            anim += dt;
+            kb = Keyboard.GetState();
+            pad = GamePad.GetState(PlayerIndex.One);
+
+            bool alt = kb.IsKeyDown(Keys.LeftAlt) || kb.IsKeyDown(Keys.RightAlt);
+            if (Press(Keys.F11) || (alt && Press(Keys.Enter)))
+            {
+                cfg.Fullscreen = !cfg.Fullscreen;
+                ApplyGraphics();
+            }
+            else
+            {
+                switch (state)
+                {
+                    case State.Menu: UpdateMenu(dt); break;
+                    case State.Racing: UpdateRace(dt); break;
+                    case State.Paused: UpdatePause(); break;
+                    case State.Results: UpdateResults(); break;
+                }
+            }
+
+            pkb = kb;
+            ppad = pad;
+            base.Update(gameTime);
+        }
+
+        /// <summary>Lecture du stick gauche comme un bouton : -1 / 0 / +1, avec délai puis répétition quand on maintient.</summary>
+        int StickStep(float value, float prev, ref float repeatTimer, float dt)
+        {
+            const float threshold = 0.55f;
+            int sign = value > threshold ? 1 : (value < -threshold ? -1 : 0);
+            int prevSign = prev > threshold ? 1 : (prev < -threshold ? -1 : 0);
+
+            if (sign == 0) { repeatTimer = 0f; return 0; }
+            if (sign != prevSign) { repeatTimer = 0.40f; return sign; }   // nouveau mouvement : réaction immédiate
+            repeatTimer -= dt;                                            // maintenu : on répète
+            if (repeatTimer <= 0f) { repeatTimer = 0.11f; return sign; }
+            return 0;
+        }
+
+        void UpdateMenu(float dt)
+        {
+            int stickY = StickStep(pad.ThumbSticks.Left.Y, ppad.ThumbSticks.Left.Y, ref stickRepeatY, dt);
+            int stickX = StickStep(pad.ThumbSticks.Left.X, ppad.ThumbSticks.Left.X, ref stickRepeatX, dt);
+
+            if (Press(Keys.Up) || PadPress(Buttons.DPadUp) || stickY > 0) sel = M.Wrap(sel - 1, Rows.Length);
+            if (Press(Keys.Down) || PadPress(Buttons.DPadDown) || stickY < 0) sel = M.Wrap(sel + 1, Rows.Length);
+
+            int dir = 0;
+            if (Press(Keys.Left) || PadPress(Buttons.DPadLeft) || stickX < 0) dir = -1;
+            if (Press(Keys.Right) || PadPress(Buttons.DPadRight) || stickX > 0) dir = 1;
+            bool enter = Press(Keys.Enter) || Press(Keys.Space) || PadPress(Buttons.A);
+
+            switch (Rows[sel])
+            {
+                case Row.Play: if (enter) StartRace(); break;
+                case Row.Track:
+                    if (dir != 0) cfg.Track = M.Wrap(cfg.Track + dir, tracks.Length);
+                    else if (enter) StartRace();
+                    break;
+                case Row.Player:
+                    if (dir != 0) cfg.Player = M.Wrap(cfg.Player + dir, faces.Count);
+                    else if (enter) StartRace();
+                    break;
+                case Row.Difficulty:
+                    if (dir != 0) cfg.Difficulty = M.Wrap(cfg.Difficulty + dir, DifficultyNames.Length);
+                    else if (enter) StartRace();
+                    break;
+                case Row.Laps:
+                    if (dir != 0) cfg.Laps = (int)M.Clamp(cfg.Laps + dir, 1, 9);
+                    else if (enter) StartRace();
+                    break;
+                case Row.Resolution:
+                    if (dir != 0)
+                    {
+                        resIdx = M.Wrap(resIdx + dir, resolutions.Count);
+                        cfg.Width = resolutions[resIdx].X;
+                        cfg.Height = resolutions[resIdx].Y;
+                        ApplyGraphics();
+                    }
+                    break;
+                case Row.Display:
+                    if (dir != 0 || enter) { cfg.Fullscreen = !cfg.Fullscreen; ApplyGraphics(); }
+                    break;
+                case Row.VSync:
+                    if (dir != 0 || enter) { cfg.VSync = !cfg.VSync; ApplyGraphics(); }
+                    break;
+                case Row.Fps:
+                    if (dir != 0)
+                    {
+                        cfg.FpsIndex = M.Wrap(cfg.FpsIndex + dir, GameSettings.FpsCaps.Length);
+                        ApplyGraphics();
+                    }
+                    break;
+                case Row.Quit:
+                    if (enter) { cfg.Save(); Exit(); }
+                    break;
+            }
+
+            if (Press(Keys.Escape)) { cfg.Save(); Exit(); }
+            if (PadPress(Buttons.Y)) { cfg.Fullscreen = !cfg.Fullscreen; ApplyGraphics(); }
+        }
+
+        void StartRace()
+        {
+            cfg.Save();
+            var racers = new List<RacerInfo>();
+            FaceInfo me = faces[cfg.Player];
+            racers.Add(new RacerInfo { Name = me.Name, Face = me.Texture, Color = KartColors[0], IsPlayer = true });
+
+            var others = faces.Where(f => f != me && !f.IsPlaceholder).OrderBy(f => rng.Next()).Take(7).ToList();
+            int colorIdx = 1;
+            foreach (FaceInfo f in others)
+                racers.Add(new RacerInfo { Name = f.Name, Face = f.Texture, Color = KartColors[colorIdx++ % KartColors.Length] });
+
+            int bot = 0;
+            while (racers.Count < 6)
+            {
+                racers.Add(new RacerInfo
+                {
+                    Name = "ROBOT " + (bot + 1),
+                    Face = botFaces[bot % botFaces.Length],
+                    Color = KartColors[colorIdx++ % KartColors.Length],
+                });
+                bot++;
+            }
+
+            race = new Race(tracks[cfg.Track], racers, cfg.Laps, DifficultyStrength[cfg.Difficulty], rng);
+            camAngle = race.Player.Angle;
+            camPos = race.Player.Pos + race.Player.Heading * 260f;
+            steerSmooth = 0f;
+            state = State.Racing;
+        }
+
+        PlayerInput ReadInput(float dt)
+        {
+            float thr = 0f, st = 0f;
+            if (kb.IsKeyDown(Keys.Up) || kb.IsKeyDown(Keys.W)) thr += 1f;
+            if (kb.IsKeyDown(Keys.Down) || kb.IsKeyDown(Keys.S)) thr -= 1f;
+            if (kb.IsKeyDown(Keys.Left) || kb.IsKeyDown(Keys.A)) st -= 1f;
+            if (kb.IsKeyDown(Keys.Right) || kb.IsKeyDown(Keys.D)) st += 1f;
+            if (pad.IsConnected)
+            {
+                thr += pad.Triggers.Right - pad.Triggers.Left;
+                if (pad.IsButtonDown(Buttons.A)) thr += 1f;
+                if (pad.IsButtonDown(Buttons.B)) thr -= 1f;
+                st += pad.ThumbSticks.Left.X;
+            }
+
+            // Direction progressive au clavier (plus agréable qu'un tout-ou-rien).
+            float diff = st - steerSmooth;
+            float step = 7f * dt;
+            steerSmooth += M.Clamp(diff, -step, step);
+
+            return new PlayerInput
+            {
+                Throttle = M.Clamp(thr, -1f, 1f),
+                Steer = M.Clamp(steerSmooth, -1f, 1f),
+                UseItem = Press(Keys.Space) || Press(Keys.LeftControl) || Press(Keys.Enter)
+                          || PadPress(Buttons.X) || PadPress(Buttons.RightShoulder) || PadPress(Buttons.Y),
+            };
+        }
+
+        void UpdateRace(float dt)
+        {
+            if (Press(Keys.Escape) || PadPress(Buttons.Start) || !IsActive)
+            {
+                state = State.Paused;
+                return;
+            }
+
+            race.Update(dt, ReadInput(dt));
+
+            Kart p = race.Player;
+            Vector2 target = p.Pos + p.Heading * 260f;
+            camPos = Vector2.Lerp(camPos, target, 1f - (float)Math.Exp(-9f * dt));
+            camAngle += M.WrapAngle(p.Angle - camAngle) * (1f - (float)Math.Exp(-5f * dt));
+
+            if (race.Over) state = State.Results;
+        }
+
+        void UpdatePause()
+        {
+            if (Press(Keys.Escape) || PadPress(Buttons.Start) || Press(Keys.Enter)) state = State.Racing;
+            if (Press(Keys.M) || PadPress(Buttons.B)) state = State.Menu;
+            if (Press(Keys.R) || PadPress(Buttons.Y)) StartRace();
+        }
+
+        void UpdateResults()
+        {
+            if (Press(Keys.Enter) || PadPress(Buttons.A) || Press(Keys.Escape)) state = State.Menu;
+            if (Press(Keys.R) || PadPress(Buttons.Y)) StartRace();
+        }
+
+        // ================================================================== dessin : helpers
+
+        void Rect(float x, float y, float w, float h, Color c) =>
+            sb.Draw(pixel, new Rectangle((int)x, (int)y, (int)w, (int)h), c);
+
+        void RectC(Vector2 center, Vector2 size, float rot, Color c) =>
+            sb.Draw(pixel, center, null, c, rot, new Vector2(0.5f, 0.5f), size, SpriteEffects.None, 0f);
+
+        void Disc(Vector2 center, float diameter, Color c) =>
+            sb.Draw(disc, center, null, c, 0f, new Vector2(64f, 64f), diameter / 128f, SpriteEffects.None, 0f);
+
+        void Face(Texture2D tex, Vector2 center, float diameter, float rotation, Color tint) =>
+            sb.Draw(tex, center, null, tint, rotation, new Vector2(tex.Width * 0.5f, tex.Height * 0.5f),
+                    diameter / tex.Width, SpriteEffects.None, 0f);
+
+        void Text(string s, float x, float y, int scale, Color c, bool center = false) =>
+            PixelFont.Draw(sb, pixel, s, (int)x, (int)y, scale, c, center);
+
+        /// <summary>Panneau sombre derrière des commandes pour qu'elles restent bien lisibles.</summary>
+        void HintPanel(string[] lines, float centerX, float bottomY, int scale, Color color)
+        {
+            if (lines == null || lines.Length == 0) return;
+            float padX = T(16), padY = T(12), gap = T(8);
+            int maxW = 0;
+            foreach (string l in lines) maxW = Math.Max(maxW, PixelFont.Measure(l, scale));
+            float lineH = scale * 5f + gap;
+            float bw = maxW + padX * 2f;
+            float bh = lines.Length * scale * 5f + (lines.Length - 1) * gap + padY * 2f;
+            float bx = centerX - bw * 0.5f;
+            float by = bottomY - bh;
+            Rect(bx, by, bw, bh, Color.Black * 0.6f);
+            Rect(bx, by, bw, Math.Max(1f, T(1)), color * 0.5f);
+            for (int i = 0; i < lines.Length; i++)
+                Text(lines[i], centerX, by + padY + i * lineH, scale, color, true);
+        }
+
+        // Commandes affichées : boutons d'une manette Xbox si une manette est branchée, sinon clavier.
+        string[] MenuHint() => pad.IsConnected
+            ? new[] { "STICK G OU CROIX: CHOISIR   GAUCHE/DROITE: CHANGER   A: VALIDER", "Y: PLEIN ECRAN" }
+            : new[] { "HAUT/BAS: CHOISIR   GAUCHE/DROITE: CHANGER   ENTREE: VALIDER", "F11: PLEIN ECRAN   ECHAP: QUITTER" };
+
+        string RaceHint() => pad.IsConnected
+            ? "STICK G: TOURNER   GACHETTE D: ACCELERER   GACHETTE G: FREINER   X: ARME   START: PAUSE"
+            : "FLECHES/WASD: CONDUIRE   ESPACE: ARME   ECHAP: PAUSE";
+
+        string[] PauseHint() => pad.IsConnected
+            ? new[] { "START: REPRENDRE", "Y: RECOMMENCER", "B: MENU" }
+            : new[] { "ECHAP: REPRENDRE", "R: RECOMMENCER", "M: MENU" };
+
+        string ResultsHint() => pad.IsConnected
+            ? "A: MENU   Y: REJOUER"
+            : "ENTREE: MENU   R: REJOUER";
+
+        static string FormatTime(float t) =>
+            string.Format(CultureInfo.InvariantCulture, "{0:00}:{1:00.0}", (int)(t / 60f), t % 60f);
+
+        Vector2 MapPoint(Track t, Rectangle r, Vector2 p)
+        {
+            Vector2 span = t.Max - t.Min;
+            float s = Math.Min(r.Width / span.X, r.Height / span.Y);
+            Vector2 off = new Vector2(r.X + (r.Width - span.X * s) * 0.5f, r.Y + (r.Height - span.Y * s) * 0.5f);
+            return off + (p - t.Min) * s;
+        }
+
+        void DrawMiniTrack(Track t, Rectangle r, float dot)
+        {
+            for (int i = 0; i < t.N; i += 2)
+                Disc(MapPoint(t, r, t.Center[i]), dot, Color.White * 0.75f);
+            Disc(MapPoint(t, r, t.Center[0]), dot * 2.2f, Color.Red);   // ligne de départ
+        }
+
+        // ================================================================== dessin
+
+        protected override void Draw(GameTime gameTime)
+        {
+            fpsFrames++;
+            if (fpsWatch.ElapsedMilliseconds >= 500)
+            {
+                fps = (int)Math.Round(fpsFrames * 1000.0 / fpsWatch.ElapsedMilliseconds);
+                fpsFrames = 0;
+                fpsWatch.Restart();
+                Window.Title = "Kartamania - " + fps + " FPS";
+            }
+
+            if (state == State.Menu || race == null)
+            {
+                DrawMenu();
+            }
+            else
+            {
+                DrawWorld();
+                sb.Begin(samplerState: SamplerState.LinearClamp);
+                DrawHud();
+                if (state == State.Paused) DrawPause();
+                if (state == State.Results) DrawResults();
+                sb.End();
+            }
+
+            base.Draw(gameTime);
+        }
+
+        // ------------------------------------------------------------------ menu
+
+        string RowText(Row r)
+        {
+            switch (r)
+            {
+                case Row.Play: return "JOUER";
+                case Row.Track: return "PISTE: < " + tracks[cfg.Track].Def.Name + " >";
+                case Row.Player: return "JOUEUR: < " + faces[cfg.Player].Name + " >";
+                case Row.Difficulty: return "DIFFICULTE: < " + DifficultyNames[cfg.Difficulty] + " >";
+                case Row.Laps: return "TOURS: < " + cfg.Laps + " >";
+                case Row.Resolution: return "RESOLUTION: < " + resolutions[resIdx].X + "X" + resolutions[resIdx].Y + " >";
+                case Row.Display: return "AFFICHAGE: < " + (cfg.Fullscreen ? "PLEIN ECRAN" : "FENETRE") + " >";
+                case Row.VSync: return "VSYNC: < " + (cfg.VSync ? "OUI" : "NON") + " >";
+                case Row.Fps:
+                    int cap = GameSettings.FpsCaps[cfg.FpsIndex];
+                    return "LIMITE FPS: < " + (cap > 0 ? cap.ToString() : "ILLIMITE") + " >";
+                default: return "QUITTER";
+            }
+        }
+
+        void DrawMenu()
+        {
+            GraphicsDevice.Clear(new Color(22, 26, 46));
+            int w = W, h = H;
+            sb.Begin(samplerState: SamplerState.LinearClamp);
+
+            // Bande à damier en haut et en bas.
+            int cell = T(24);
+            for (int i = 0; i * cell < w; i++)
+            {
+                Color c = (i % 2 == 0) ? Color.White * 0.9f : Color.Black * 0.6f;
+                Rect(i * cell, 0, cell, cell, c);
+                Rect(i * cell, h - cell, cell, cell, c);
+                Rect(i * cell, cell, cell, cell, (i % 2 == 0) ? Color.Black * 0.6f : Color.White * 0.9f);
+                Rect(i * cell, h - 2 * cell, cell, cell, (i % 2 == 0) ? Color.Black * 0.6f : Color.White * 0.9f);
+            }
+
+            float lx = w * 0.06f;
+            Text("KARTAMANIA", lx, h * 0.12f, T(13), new Color(255, 215, 60));
+            Text("COURSE DE KART POUR TOUTE LA FAMILLE", lx, h * 0.12f + T(13) * 6.5f, T(3), Color.White * 0.85f);
+
+            int ts = T(4);
+            float y = h * 0.34f;
+            float lineH = ts * 9f;
+            for (int i = 0; i < Rows.Length; i++)
+            {
+                bool on = i == sel;
+                string line = (on ? "> " : "  ") + RowText(Rows[i]);
+                Text(line, lx, y + i * lineH, ts, on ? new Color(255, 215, 60) : Color.White * 0.85f);
+            }
+
+            HintPanel(MenuHint(), w * 0.5f, h - T(24) * 2f - T(12), T(3), Color.White);
+
+            // Panneau de droite : aperçu de la piste + visages.
+            var panel = new Rectangle((int)(w * 0.56f), (int)(h * 0.12f), (int)(w * 0.38f), (int)(h * 0.74f));
+            Rect(panel.X, panel.Y, panel.Width, panel.Height, Color.Black * 0.35f);
+
+            Track tr = tracks[cfg.Track];
+            Text(tr.Def.Name, panel.X + panel.Width * 0.5f, panel.Y + T(14), T(4), Color.White, true);
+            var mapRect = new Rectangle(panel.X + T(30), panel.Y + T(60), panel.Width - T(60), (int)(panel.Height * 0.42f));
+            DrawMiniTrack(tr, mapRect, T(9));
+
+            FaceInfo me = faces[cfg.Player];
+            float faceY = panel.Y + panel.Height * 0.62f;
+            Face(me.Texture, new Vector2(panel.X + panel.Width * 0.5f, faceY), T(130), 0f, Color.White);
+            Text(me.Name, panel.X + panel.Width * 0.5f, faceY + T(80), T(4), Color.White, true);
+
+            if (!hasPhotos)
+            {
+                Text("AJOUTE TES PHOTOS DANS LE DOSSIER FACES", panel.X + panel.Width * 0.5f, panel.Y + panel.Height - T(60), T(2.5f), new Color(255, 215, 60), true);
+                Text("(PNG OU JPG, UN FICHIER PAR PERSONNE)", panel.X + panel.Width * 0.5f, panel.Y + panel.Height - T(36), T(2.5f), Color.White * 0.8f, true);
+            }
+            else
+            {
+                float sx = panel.X + T(30);
+                int shown = Math.Min(faces.Count, 8);
+                float step = (panel.Width - T(60)) / 8f;
+                for (int i = 0; i < shown; i++)
+                    Face(faces[i].Texture, new Vector2(sx + step * (i + 0.5f), panel.Y + panel.Height - T(44)), Math.Min(step * 0.85f, T(70)), 0f,
+                         i == cfg.Player ? Color.White : Color.White * 0.55f);
+            }
+            if (faceWarning.Length > 0)
+                Text(faceWarning, panel.X + panel.Width * 0.5f, panel.Y + panel.Height + T(10), T(2.5f), Color.OrangeRed, true);
+
+            sb.End();
+        }
+
+        // ------------------------------------------------------------------ monde
+
+        void DrawWorld()
+        {
+            Track tr = race.Track;
+            TrackDef def = tr.Def;
+            int n = tr.N;
+            int w = W, h = H;
+
+            zoom = h / 1000f;
+            camRot = -M.Pi / 2f - camAngle;
+            camMatrix = Matrix.CreateTranslation(-camPos.X, -camPos.Y, 0f)
+                      * Matrix.CreateRotationZ(camRot)
+                      * Matrix.CreateScale(zoom, zoom, 1f)
+                      * Matrix.CreateTranslation(w * 0.5f, h * 0.5f, 0f);
+
+            float cullR = (float)Math.Sqrt((double)w * w + (double)h * h) * 0.5f / zoom + 260f;
+            float cull2 = cullR * cullR;
+
+            GraphicsDevice.Clear(def.Grass);
+            sb.Begin(samplerState: SamplerState.LinearClamp, transformMatrix: camMatrix);
+
+            float rough = (tr.HalfWidth + Track.Shoulder + 10f) * 2f;
+            for (int i = 0; i < n; i++)
+                if (Vector2.DistanceSquared(tr.Center[i], camPos) <= cull2) Disc(tr.Center[i], rough, def.Rough);
+
+            for (int i = 0; i < n; i++)
+                if (Vector2.DistanceSquared(tr.Center[i], camPos) <= cull2)
+                    Disc(tr.Center[i], def.Width + 34f, ((i / 3) % 2 == 0) ? new Color(210, 40, 40) : Color.White);
+
+            for (int i = 0; i < n; i++)
+                if (Vector2.DistanceSquared(tr.Center[i], camPos) <= cull2) Disc(tr.Center[i], def.Width, def.Road);
+
+            for (int i = 0; i < n; i++)
+            {
+                if (Vector2.DistanceSquared(tr.Center[i], camPos) > cull2) continue;
+                if (i % 6 < 3) RectC(tr.Center[i], new Vector2(30f, 6f), M.Angle(tr.Tangent[i]), Color.White * 0.5f);
+            }
+
+            // Ligne de départ en damier.
+            {
+                float c = def.Width / 14f;
+                float rot = M.Angle(tr.Tangent[0]);
+                for (int a = 0; a < 14; a++)
+                    for (int b = 0; b < 2; b++)
+                    {
+                        Vector2 p = tr.Center[0] + tr.Normal[0] * ((a - 6.5f) * c) + tr.Tangent[0] * ((b - 0.5f) * c);
+                        RectC(p, new Vector2(c, c), rot, ((a + b) % 2 == 0) ? Color.White : Color.Black);
+                    }
+            }
+
+            // Barrières (pneus) de chaque côté.
+            float wall = tr.HalfWidth + Track.Shoulder;
+            for (int i = 0; i < n; i += 2)
+            {
+                if (Vector2.DistanceSquared(tr.Center[i], camPos) > cull2) continue;
+                Color bc = ((i / 2) % 2 == 0) ? new Color(210, 40, 40) : Color.White;
+                Disc(tr.Center[i] + tr.Normal[i] * wall, 22f, bc);
+                Disc(tr.Center[i] - tr.Normal[i] * wall, 22f, bc);
+            }
+
+            // Obstacles (cônes).
+            foreach (Vector2 o in tr.ObstaclePos)
+            {
+                if (Vector2.DistanceSquared(o, camPos) > cull2) continue;
+                Disc(o + new Vector2(4f, 6f), Race.ObstacleRadius * 2f, Color.Black * 0.25f);
+                Disc(o, Race.ObstacleRadius * 2f, new Color(240, 90, 20));
+                Disc(o, Race.ObstacleRadius * 1.3f, Color.White);
+                Disc(o, Race.ObstacleRadius * 0.6f, new Color(240, 90, 20));
+            }
+
+            // Boîtes d'armes.
+            foreach (ItemBox b in race.Boxes)
+            {
+                if (b.Respawn > 0f || Vector2.DistanceSquared(b.Pos, camPos) > cull2) continue;
+                float pulse = 1f + 0.1f * (float)Math.Sin(anim * 6f);
+                RectC(b.Pos, new Vector2(46f, 46f) * pulse, anim * 2f, new Color(255, 215, 60));
+                RectC(b.Pos, new Vector2(32f, 32f) * pulse, -anim * 2f, new Color(60, 90, 220));
+                RectC(b.Pos, new Vector2(14f, 14f), anim * 4f, Color.White);
+            }
+
+            // Mines.
+            foreach (Mine m in race.Mines)
+            {
+                if (Vector2.DistanceSquared(m.Pos, camPos) > cull2) continue;
+                Disc(m.Pos, 42f, Color.Black * 0.85f);
+                Disc(m.Pos, 18f, (((int)(anim * 4f)) % 2 == 0) ? Color.Red : new Color(120, 0, 0));
+            }
+
+            // Missiles.
+            foreach (Missile m in race.Missiles)
+            {
+                Vector2 d = M.Dir(m.Angle);
+                Disc(m.Pos - d * 30f, 22f, Color.Orange * 0.9f);
+                RectC(m.Pos, new Vector2(46f, 14f), m.Angle, new Color(220, 40, 40));
+                Disc(m.Pos + d * 22f, 15f, Color.White);
+            }
+
+            // Karts (le joueur en dernier pour qu'il soit au-dessus).
+            foreach (Kart k in race.Karts)
+                if (!k.IsPlayer && Vector2.DistanceSquared(k.Pos, camPos) <= cull2) DrawKart(k);
+            DrawKart(race.Player);
+
+            // Particules.
+            foreach (Particle p in race.Particles)
+            {
+                float f = p.Age / p.Life;
+                Disc(p.Pos, p.Size * (1f - 0.6f * f), p.Color * (1f - f));
+            }
+
+            sb.End();
+        }
+
+        void DrawKart(Kart k)
+        {
+            if (k.Eliminated) return;
+
+            float rot = k.Angle + k.SpinVisual;
+            Vector2 f = M.Dir(rot);
+            Vector2 r = new Vector2(-f.Y, f.X);
+            float alpha = (k.Invuln > 0f && (((int)(anim * 14f)) & 1) == 0) ? 0.45f : 1f;
+
+            RectC(k.Pos + new Vector2(5f, 7f), new Vector2(72f, 46f), rot, Color.Black * 0.25f);
+
+            if (k.BoostTimer > 0f)
+                Disc(k.Pos - f * 48f, 28f + 10f * (float)Math.Sin(anim * 40f), Color.Orange);
+
+            Vector2 wheel = new Vector2(16f, 10f);
+            Color wc = new Color(30, 30, 34) * alpha;
+            RectC(k.Pos + f * 20f + r * 24f, wheel, rot, wc);
+            RectC(k.Pos + f * 20f - r * 24f, wheel, rot, wc);
+            RectC(k.Pos - f * 20f + r * 24f, wheel, rot, wc);
+            RectC(k.Pos - f * 20f - r * 24f, wheel, rot, wc);
+
+            RectC(k.Pos, new Vector2(62f, 36f), rot, k.Color * alpha);
+            RectC(k.Pos + f * 18f, new Vector2(24f, 22f), rot, Color.White * (0.35f * alpha));
+            RectC(k.Pos - f * 31f, new Vector2(6f, 46f), rot, Color.Black * (0.7f * alpha));
+
+            if (k.ShieldTimer > 0f)
+            {
+                float blink = (k.ShieldTimer < 2f && (((int)(anim * 10f)) & 1) == 0) ? 0.5f : 1f;
+                Disc(k.Pos, 104f, Color.Cyan * (0.20f * blink));
+                Disc(k.Pos, 96f, Color.Cyan * (0.15f * blink));
+            }
+
+            // Le visage reste toujours droit à l'écran, même quand la caméra tourne.
+            Vector2 up = M.Rot(new Vector2(0f, -1f), -camRot);
+            Face(k.Face, k.Pos + up * 14f, 60f, -camRot, Color.White * alpha);
+        }
+
+        // ------------------------------------------------------------------ HUD
+
+        void DrawHud()
+        {
+            int w = W, h = H;
+            float u = h / 1080f;
+            float m = 24f * u;
+            Kart p = race.Player;
+            Vector2 up = M.Rot(new Vector2(0f, -1f), -camRot);
+
+            // Noms et points de vie au-dessus des karts.
+            foreach (Kart k in race.Karts)
+            {
+                if (k.Eliminated) continue;
+                Vector2 s = Vector2.Transform(k.Pos + up * 14f, camMatrix);
+                if (s.X < -100 || s.X > w + 100 || s.Y < -100 || s.Y > h + 100) continue;
+                float ty = s.Y - 62f * zoom;
+                Text(k.Name, s.X, ty, T(2), k.IsPlayer ? new Color(255, 215, 60) : Color.White, true);
+                for (int i = 0; i < k.Hp; i++)
+                    Disc(new Vector2(s.X + (i - (k.Hp - 1) * 0.5f) * 14f * u, ty - 10f * u), 9f * u, Color.Red);
+            }
+
+            // Haut gauche : tour, position, vie.
+            {
+                int ts = T(5);
+                int lh = PixelFont.LineHeight(ts);
+                float gap = 6f * u;
+                Text("TOUR " + Math.Min(Math.Max(p.Lap + 1, 1), race.TotalLaps) + "/" + race.TotalLaps, m, m, ts, Color.White);
+                float posY = m + lh + gap;
+                Text("POS " + p.Place + "/" + race.Karts.Count, m, posY, ts, new Color(255, 215, 60));
+                int ls = T(2.5f);
+                float lblY = posY + lh + gap;
+                Text("POINTS DE VIE", m, lblY, ls, Color.White * 0.85f);
+                float dotY = lblY + PixelFont.LineHeight(ls) + 4f * u + 13f * u;
+                for (int i = 0; i < Kart.MaxHp; i++)
+                    Disc(new Vector2(m + 14f * u + i * 34f * u, dotY), 26f * u, i < p.Hp ? Color.Red : Color.White * 0.25f);
+            }
+
+            // Haut centre : arme en main.
+            {
+                float bs = 120f * u;
+                float cx = w * 0.5f;
+                Rect(cx - bs * 0.5f, m, bs, bs, Color.Black * 0.45f);
+                Rect(cx - bs * 0.5f, m, bs, 3f * u, Color.White);
+                Rect(cx - bs * 0.5f, m + bs - 3f * u, bs, 3f * u, Color.White);
+                Rect(cx - bs * 0.5f, m, 3f * u, bs, Color.White);
+                Rect(cx + bs * 0.5f - 3f * u, m, 3f * u, bs, Color.White);
+                Vector2 ic = new Vector2(cx, m + bs * 0.42f);
+                string name = "";
+                switch (p.Item)
+                {
+                    case ItemType.Missile: Disc(ic, 50f * u, new Color(220, 40, 40)); Disc(ic + new Vector2(0f, -22f * u), 22f * u, Color.White); name = "MISSILE"; break;
+                    case ItemType.Mine: Disc(ic, 54f * u, Color.Black); Disc(ic, 22f * u, Color.Red); name = "MINE"; break;
+                    case ItemType.Boost: Disc(ic, 54f * u, Color.Orange); Disc(ic, 28f * u, Color.Yellow); name = "TURBO"; break;
+                    case ItemType.Shield: Disc(ic, 54f * u, Color.Cyan * 0.8f); Disc(ic, 34f * u, Color.White * 0.5f); name = "BOUCLIER"; break;
+                }
+                if (name.Length > 0) Text(name, cx, m + bs * 0.78f, T(2.5f), Color.White, true);
+                else Text("-", cx, m + bs * 0.38f, T(6), Color.White * 0.4f, true);
+            }
+
+            // Haut droite : FPS et temps.
+            {
+                int fpsScale = T(3);
+                Text("FPS " + fps, w - m - PixelFont.Measure("FPS " + fps, fpsScale), m, fpsScale, fps >= 115 ? new Color(120, 255, 120) : Color.White);
+                string tm = FormatTime(race.Time);
+                float timeY = m + PixelFont.LineHeight(fpsScale) + 4f * u;
+                Text(tm, w - m - PixelFont.Measure(tm, T(4)), timeY, T(4), Color.White);
+            }
+
+            // Bas droite : vitesse.
+            string spd = (int)(p.Vel.Length() * 0.5f) + " KM/H";
+            Text(spd, w - m - PixelFont.Measure(spd, T(5)), h - m - T(5) * 5f, T(5), Color.White);
+
+            // Bas gauche : mini-carte.
+            {
+                var r = new Rectangle((int)m, (int)(h - m - 250f * u), (int)(300f * u), (int)(250f * u));
+                Rect(r.X, r.Y, r.Width, r.Height, Color.Black * 0.45f);
+                var inner = new Rectangle(r.X + (int)(14f * u), r.Y + (int)(14f * u), r.Width - (int)(28f * u), r.Height - (int)(28f * u));
+                DrawMiniTrack(race.Track, inner, 4f * u);
+                foreach (Kart k in race.Karts)
+                {
+                    if (k.Eliminated) continue;
+                    Vector2 mp = MapPoint(race.Track, inner, k.Pos);
+                    if (k.IsPlayer) Disc(mp, 16f * u, Color.White);
+                    Disc(mp, (k.IsPlayer ? 11f : 9f) * u, k.Color);
+                }
+            }
+
+            // Droite : messages (éliminations...).
+            for (int i = 0; i < race.Feed.Count; i++)
+            {
+                FeedMessage fm = race.Feed[i];
+                float a = M.Clamp(5f - fm.Age, 0f, 1f);
+                int sc = T(3);
+                Text(fm.Text, w - m - PixelFont.Measure(fm.Text, sc), h * 0.30f + i * sc * 8f, sc, Color.White * a);
+            }
+
+            // Compte à rebours / GO.
+            if (race.Countdown > 0f)
+            {
+                int num = (int)Math.Ceiling(race.Countdown);
+                Text(num.ToString(), w * 0.5f, h * 0.30f, T(28), new Color(255, 215, 60), true);
+            }
+            else if (race.Time < 0.9f)
+            {
+                Text("GO!", w * 0.5f, h * 0.30f, T(28), new Color(120, 255, 120), true);
+            }
+
+            // Aide aux commandes au début de course : grande, sur fond sombre, adaptée au périphérique.
+            if (state == State.Racing && race.Time < 9f)
+                HintPanel(new[] { RaceHint() }, w * 0.5f, h - T(24), T(3), Color.White);
+        }
+
+        void DrawPause()
+        {
+            Rect(0, 0, W, H, Color.Black * 0.6f);
+            Text("PAUSE", W * 0.5f, H * 0.22f, T(14), Color.White, true);
+            Text("COMMANDES", W * 0.5f, H * 0.44f, T(4), new Color(255, 215, 60), true);
+            HintPanel(new[] { RaceHint() }, W * 0.5f, H * 0.63f, T(3), Color.White);
+
+            string[] opts = PauseHint();
+            float oy = H * 0.70f;
+            for (int i = 0; i < opts.Length; i++)
+                Text(opts[i], W * 0.5f, oy + i * T(4) * 8f, T(4), Color.White, true);
+        }
+
+        void DrawResults()
+        {
+            int w = W, h = H;
+            Rect(0, 0, w, h, Color.Black * 0.68f);
+            Kart p = race.Player;
+
+            string title = p.Eliminated ? "ELIMINE!" : (p.Place == 1 ? "VICTOIRE!" : "COURSE TERMINEE");
+            Color tc = p.Eliminated ? Color.OrangeRed : (p.Place == 1 ? new Color(255, 215, 60) : Color.White);
+            Text(title, w * 0.5f, h * 0.04f, T(11), tc, true);
+
+            int count = Math.Max(1, race.Ranking.Count);
+            float top = h * 0.20f;
+            float bottom = h * 0.86f;
+            float row = Math.Min(T(104), (bottom - top) / count);
+            float faceD = Math.Min(row * 0.72f, T(66));
+            int ts = T(4);
+            float textYOff = -ts * 2.5f;
+
+            float boxLeft = w * 0.16f;
+            float boxRight = w * 0.84f;
+            float boxW = boxRight - boxLeft;
+            float faceX = boxLeft + T(85);
+            float nameX = boxLeft + T(150);
+            float statusRight = boxRight - T(24);
+
+            for (int i = 0; i < race.Ranking.Count; i++)
+            {
+                Kart k = race.Ranking[i];
+                float yy = top + row * i;
+                float cy = yy + row * 0.5f;
+
+                if (k.IsPlayer)
+                    Rect(boxLeft, yy + row * 0.06f, boxW, row * 0.88f, Color.White * 0.14f);
+
+                Text((i + 1) + ".", boxLeft + T(16), cy + textYOff, ts, Color.White);
+                Face(k.Face, new Vector2(faceX, cy), faceD, 0f, Color.White);
+                Text(k.Name, nameX, cy + textYOff, ts, k.IsPlayer ? new Color(255, 215, 60) : Color.White);
+
+                string status;
+                if (k.Finished) status = FormatTime(k.FinishTime);
+                else if (k.Eliminated) status = "ELIMINE";
+                else status = "TOUR " + Math.Min(Math.Max(k.Lap + 1, 1), race.TotalLaps);
+                string kills = k.Kills > 0 ? "  X" + k.Kills : "";
+                string right = status + kills;
+                Text(right, statusRight - PixelFont.Measure(right, ts), cy + textYOff, ts,
+                     k.Eliminated ? Color.OrangeRed : Color.White);
+            }
+
+            HintPanel(new[] { ResultsHint() }, w * 0.5f, h * 0.97f, T(3), Color.White);
+        }
+    }
+}
+

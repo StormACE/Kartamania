@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Kartamania</RootNamespace>
+    <AssemblyName>Kartamania</AssemblyName>
+    <TieredPGO>true</TieredPGO>
+    <ServerGarbageCollector>false</ServerGarbageCollector>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Moteur de jeu 2D/3D multiplateforme (OpenGL). Aucun "Content Pipeline" n'est utilisé : tout est généré en code. -->
+    <PackageReference Include="FontStashSharp.MonoGame" Version="1.6.2" />
+    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.4.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Les photos du dossier Faces sont copiées à côté de l'exécutable. -->
+    <None Update="Faces\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

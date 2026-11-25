@@ -1,0 +1,4 @@
+Mets ici les photos de ta famille (PNG, JPG, BMP ou GIF), une photo par personne.
+Le nom du fichier devient le nom du pilote : "Maman.jpg" -> MAMAN.
+Le jeu recadre automatiquement la photo en rond, centree sur le visage.
+Une photo de visage de face, bien cadree, donne le meilleur resultat.
