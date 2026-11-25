@@ -51,17 +51,17 @@ namespace Kartamania
 
         public IReadOnlyList<Kart> Ranking => ranking;
 
-        readonly float aiStrength;
+        readonly float difficultySpeed;
         readonly Random rng;
         readonly List<Kart> ranking = new List<Kart>();
         float overTimer = -1f;
         int finishCounter;
 
-        public Race(Track track, IList<RacerInfo> racers, int laps, float aiStrength, Random rng)
+        public Race(Track track, IList<RacerInfo> racers, int laps, float difficultySpeed, Random rng)
         {
             Track = track;
             TotalLaps = laps;
-            this.aiStrength = aiStrength;
+            this.difficultySpeed = difficultySpeed;
             this.rng = rng;
 
             // Place sur la grille de départ (mélangée).
@@ -188,7 +188,7 @@ namespace Kartamania
             float throttle = spinning ? 0f : k.Throttle;
             float steer = spinning ? 0f : k.Steer;
 
-            float maxSpeed = BaseSpeed * (k.IsPlayer ? 1f : aiStrength * k.AiSkill);
+            float maxSpeed = BaseSpeed * difficultySpeed * (k.IsPlayer ? 1f : k.AiSkill);
             if (k.BoostTimer > 0f) maxSpeed *= 1.45f;
             if (k.OffRoad) maxSpeed *= 0.5f;
             if (k.SlowTimer > 0f) maxSpeed *= CollisionSlowFactor;
