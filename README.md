@@ -21,6 +21,7 @@ Mets les photos dans le dossier `Faces` du projet (PNG, JPG, BMP, GIF), une par 
 | Tourner |  Flèches ou A/D |  Stick gauche |  
 | Utiliser l'arme |  Espace ou Ctrl |  X ou RB |  
 | Pause |  Échap |  Start |  
+| Terminer la course après son arrivée |  Entrée |  A |  
 | Plein écran |  F11 ou Alt+Entrée |    |  
   
    

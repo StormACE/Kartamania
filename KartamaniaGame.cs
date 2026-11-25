@@ -369,6 +369,16 @@ namespace Kartamania
             camPos = Vector2.Lerp(camPos, target, 1f - (float)Math.Exp(-9f * dt));
             camAngle += M.WrapAngle(p.Angle - camAngle) * (1f - (float)Math.Exp(-5f * dt));
 
+            if (!race.Over && (p.Finished || p.Eliminated))
+            {
+                bool waiting = false;
+                foreach (Kart k in race.Karts)
+                    if (!k.Finished && !k.Eliminated) { waiting = true; break; }
+                float doneAt = p.Finished ? p.FinishTime : p.ElimTime;
+                if (waiting && race.Time - doneAt > 0.5f && (Press(Keys.Enter) || PadPress(Buttons.A)))
+                    race.Over = true;
+            }
+
             if (race.Over)
             {
                 newRecord = false;
@@ -847,7 +857,9 @@ namespace Kartamania
                 if (remaining > 0)
                 {
                     string msg = "EN ATTENTE DES AUTRES PILOTES : " + remaining + " EN COURSE";
+                    string hint = pad.IsConnected ? "A: TERMINER LA COURSE" : "ENTREE: TERMINER LA COURSE";
                     Text(msg, w * 0.5f, h * 0.30f, T(4), new Color(255, 215, 60), true);
+                    Text(hint, w * 0.5f, h * 0.30f + T(4) * 8f, T(3), Color.White * 0.9f, true);
                 }
             }
 
