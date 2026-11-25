@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Kartamania")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+11e7b2fbc8c047d9da2a6cc9fa1a9cd28e596088")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bad74229bfafde15d28f2296826ae2b7cb0588be")]
 [assembly: System.Reflection.AssemblyProductAttribute("Kartamania")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Kartamania")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

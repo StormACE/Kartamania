@@ -3,6 +3,8 @@ using Microsoft.Xna.Framework;
 
 namespace Kartamania
 {
+    public enum TrackTheme { Normal, Winter, Desert }
+
     /// <summary>Description d'une piste : une boucle fermée de points de contrôle + décor + obstacles.</summary>
     public sealed class TrackDef
     {
@@ -11,6 +13,7 @@ namespace Kartamania
         public float Scale = 1.35f;    // facteur appliqué aux points
         public float Width = 250f;     // largeur de la route
         public Color Grass, Rough, Road;
+        public TrackTheme Theme = TrackTheme.Normal;
         public float[] BoxRows;        // positions (0..1) des rangées de boîtes d'armes
         public Vector2[] Obstacles;    // X = position sur la piste (0..1), Y = décalage latéral
     }
@@ -144,6 +147,7 @@ namespace Kartamania
         {
             Name = "Lac du Chalet",
             Width = 240f,
+            Theme = TrackTheme.Winter,
             Grass = new Color(205, 225, 238), Rough = new Color(170, 196, 214), Road = new Color(66, 72, 92),
             Points = new[] { V(-1500, -700), V(-500, -950), V(500, -550), V(1500, -950), V(2200, -250), V(1650, 550), V(600, 400), V(-100, 1000), V(-1100, 900), V(-1900, 350), V(-2150, -300) },
             BoxRows = new[] { 0.12f, 0.30f, 0.52f, 0.74f, 0.90f },
@@ -173,6 +177,7 @@ namespace Kartamania
         {
             Name = "Desert du Sud",
             Width = 300f,
+            Theme = TrackTheme.Desert,
             Grass = new Color(220, 190, 125), Rough = new Color(198, 160, 95), Road = new Color(120, 105, 92),
             Points = new[]
             {
@@ -192,6 +197,7 @@ namespace Kartamania
             Name = "Etoile du Nord",
             Width = 220f,
             Scale = 1.25f,
+            Theme = TrackTheme.Winter,
             Grass = new Color(35, 70, 95), Rough = new Color(28, 55, 75), Road = new Color(150, 165, 175),
             Points = new[]
             {

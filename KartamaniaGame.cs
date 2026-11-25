@@ -456,6 +456,46 @@ namespace Kartamania
         void Disc(Vector2 center, float diameter, Color c) =>
             sb.Draw(disc, center, null, c, 0f, new Vector2(64f, 64f), diameter / 128f, SpriteEffects.None, 0f);
 
+        void DrawTree(Vector2 p, float scale, TrackTheme theme, Vector2 up, Vector2 right, float rot)
+        {
+            Vector2 O(float x, float y) => p + right * (x * scale) + up * (y * scale);
+            Color bark = theme == TrackTheme.Desert ? new Color(150, 112, 74) : new Color(95, 65, 42);
+            Color barkDark = theme == TrackTheme.Desert ? new Color(105, 76, 50) : new Color(70, 46, 30);
+            Color barkLight = theme == TrackTheme.Desert ? new Color(185, 145, 100) : new Color(120, 84, 55);
+
+            if (theme == TrackTheme.Desert)
+            {
+                RectC(O(0f, -14f), new Vector2(14f, 44f) * scale, rot, barkDark);
+                RectC(O(2f, -14f), new Vector2(4f, 42f) * scale, rot, barkLight);
+                RectC(O(-9f, 12f), new Vector2(30f, 7f) * scale, rot + 0.55f, bark);
+                RectC(O(10f, 18f), new Vector2(34f, 7f) * scale, rot - 0.48f, bark);
+                RectC(O(-15f, 24f), new Vector2(24f, 6f) * scale, rot + 0.9f, barkDark);
+                RectC(O(14f, 30f), new Vector2(22f, 6f) * scale, rot - 0.85f, barkDark);
+                RectC(O(-22f, 20f), new Vector2(18f, 5f) * scale, rot + 0.25f, barkLight);
+                RectC(O(22f, 27f), new Vector2(16f, 5f) * scale, rot - 0.2f, barkLight);
+                RectC(O(-8f, -31f), new Vector2(20f, 5f) * scale, rot + 0.35f, barkDark);
+                RectC(O(8f, -31f), new Vector2(20f, 5f) * scale, rot - 0.35f, barkDark);
+                return;
+            }
+
+            RectC(O(0f, -16f), new Vector2(12f, 42f) * scale, rot, barkDark);
+            RectC(O(1f, -16f), new Vector2(4f, 40f) * scale, rot, bark);
+
+            Disc(O(0f, 20f), 72f * scale, new Color(35, 95, 50));
+            Disc(O(-20f, 4f), 54f * scale, new Color(45, 115, 55));
+            Disc(O(20f, 2f), 52f * scale, new Color(55, 135, 60));
+            Disc(O(-6f, 30f), 46f * scale, new Color(60, 145, 65));
+
+            if (theme == TrackTheme.Winter)
+            {
+                Color snow = new Color(240, 248, 255);
+                Disc(O(0f, 44f), 54f * scale, snow);
+                Disc(O(-24f, 22f), 36f * scale, snow);
+                Disc(O(22f, 20f), 34f * scale, snow);
+                Disc(O(-6f, 50f), 28f * scale, Color.White);
+            }
+        }
+
         void Face(Texture2D tex, Vector2 center, float diameter, float rotation, Color tint) =>
             sb.Draw(tex, center, null, tint, rotation, new Vector2(tex.Width * 0.5f, tex.Height * 0.5f),
                     diameter / tex.Width, SpriteEffects.None, 0f);
@@ -650,6 +690,9 @@ namespace Kartamania
 
             float cullR = (float)Math.Sqrt((double)w * w + (double)h * h) * 0.5f / zoom + 260f;
             float cull2 = cullR * cullR;
+            float treeRot = -camRot;
+            Vector2 treeUp = new Vector2(-(float)Math.Sin(camRot), -(float)Math.Cos(camRot));
+            Vector2 treeRight = new Vector2((float)Math.Cos(camRot), -(float)Math.Sin(camRot));
 
             GraphicsDevice.Clear(def.Grass);
             sb.Begin(samplerState: SamplerState.LinearClamp, transformMatrix: camMatrix);
@@ -691,6 +734,19 @@ namespace Kartamania
                 Color bc = ((i / 2) % 2 == 0) ? new Color(210, 40, 40) : Color.White;
                 Disc(tr.Center[i] + tr.Normal[i] * wall, 22f, bc);
                 Disc(tr.Center[i] - tr.Normal[i] * wall, 22f, bc);
+            }
+
+            for (int i = 0; i < n; i += 8)
+            {
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    int seed = i * 7 + (side + 1) * 13;
+                    float jitter = ((seed * 37) % 17 - 8) * 5f;
+                    Vector2 p = tr.Center[i] + tr.Normal[i] * (side * (wall + 95f + jitter));
+                    if (Vector2.DistanceSquared(p, camPos) > cull2) continue;
+                    float scale = 0.85f + ((seed * 11) % 9) * 0.045f;
+                    DrawTree(p, scale, def.Theme, treeUp, treeRight, treeRot);
+                }
             }
 
             // Obstacles (cônes).
