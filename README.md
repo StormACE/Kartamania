@@ -39,6 +39,9 @@ Le menu permet de choisir la résolution (liste des modes de ton écran), plein 
  Le titre de la fenêtre et le coin haut droit affichent les FPS en direct.  
    
  Pour voir 120 fps, il faut un écran 120 Hz ou plus et VSync sur NON.  
+**Build Release x64**  
+Dans Visual Studio, choisis `Release` et `x64` dans la barre d'outils, ou utilise `dotnet build Kartamania.csproj -c Release -p:Platform=x64`.  
+L'exécutable est généré dans `bin\x64\Release\net10.0\`.  
 **Ajouter une piste**  
 Dans `Track.cs`, copie une méthode de `TrackLibrary` (par ex. `Salon()`), change les points de contrôle (une boucle fermée), les obstacles et les couleurs, puis ajoute-la à `All()`.  
    

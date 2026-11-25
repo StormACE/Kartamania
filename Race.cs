@@ -26,6 +26,9 @@ namespace Kartamania
         public const float MissileSpeed = 980f;
         public const float ObstacleRadius = 26f;
         public const float BoxRadius = 30f;
+        public const float CollisionSlowFactor = 0.5f;
+        public const float KartSlowDuration = 2f;
+        public const float ObstacleSlowDuration = 3f;
 
         public readonly Track Track;
         public readonly List<Kart> Karts = new List<Kart>();
@@ -174,6 +177,7 @@ namespace Kartamania
             if (k.Invuln > 0f) k.Invuln -= dt;
             if (k.BoostTimer > 0f) k.BoostTimer -= dt;
             if (k.ShieldTimer > 0f) k.ShieldTimer -= dt;
+            if (k.SlowTimer > 0f) k.SlowTimer -= dt;
 
             bool spinning = k.SpinTimer > 0f;
             float throttle = spinning ? 0f : k.Throttle;
@@ -182,6 +186,7 @@ namespace Kartamania
             float maxSpeed = BaseSpeed * (k.IsPlayer ? 1f : aiStrength * k.AiSkill);
             if (k.BoostTimer > 0f) maxSpeed *= 1.45f;
             if (k.OffRoad) maxSpeed *= 0.5f;
+            if (k.SlowTimer > 0f) maxSpeed *= CollisionSlowFactor;
 
             if (throttle > 0f)
             {
@@ -294,7 +299,7 @@ namespace Kartamania
 
             // Utilisation des armes.
             k.AiItemDelay -= dt;
-            if (k.Item != ItemType.None && k.AiItemDelay <= 0f)
+            if (!k.Finished && k.Item != ItemType.None && k.AiItemDelay <= 0f)
             {
                 bool use = false;
                 switch (k.Item)
@@ -328,7 +333,7 @@ namespace Kartamania
             Vector2 right = new Vector2(-fwd.Y, fwd.X);
             foreach (Kart o in Karts)
             {
-                if (o == k || o.Eliminated) continue;
+                if (o == k || o.Eliminated || o.Finished) continue;
                 Vector2 v = o.Pos - k.Pos;
                 float back = -Vector2.Dot(v, fwd);
                 if (back > 80f && back < 500f && Math.Abs(Vector2.Dot(v, right)) < 100f) return true;
@@ -345,7 +350,7 @@ namespace Kartamania
             Vector2 fwd = k.Heading;
             foreach (Kart o in Karts)
             {
-                if (o == k || o.Eliminated) continue;
+                if (o == k || o.Eliminated || o.Finished) continue;
                 Vector2 v = o.Pos - k.Pos;
                 float d = v.Length();
                 if (d < 60f || d >= bd) continue;
@@ -406,7 +411,7 @@ namespace Kartamania
                 if (b.Respawn > 0f) { b.Respawn -= dt; continue; }
                 foreach (Kart k in Karts)
                 {
-                    if (k.Eliminated || k.Item != ItemType.None) continue;
+                    if (k.Eliminated || k.Finished || k.Item != ItemType.None) continue;
                     if (Vector2.DistanceSquared(k.Pos, b.Pos) > rr) continue;
                     k.Item = RollItem();
                     k.AiItemDelay = 1.5f + (float)rng.NextDouble() * 3f;
@@ -422,7 +427,8 @@ namespace Kartamania
             for (int i = Missiles.Count - 1; i >= 0; i--)
             {
                 Missile m = Missiles[i];
-                if (m.Target != null && !m.Target.Eliminated)
+                if (m.Target != null && (m.Target.Eliminated || m.Target.Finished)) m.Target = null;
+                if (m.Target != null)
                 {
                     float want = M.Angle(m.Target.Pos - m.Pos);
                     float maxTurn = m.Turn * dt;
@@ -437,7 +443,7 @@ namespace Kartamania
                     float rr = (Kart.Radius + 16f) * (Kart.Radius + 16f);
                     foreach (Kart k in Karts)
                     {
-                        if (k.Eliminated || k == m.Owner) continue;
+                        if (k.Eliminated || k.Finished || k == m.Owner) continue;
                         if (Vector2.DistanceSquared(k.Pos, m.Pos) < rr)
                         {
                             Hit(k, m.Owner, "MISSILE");
@@ -473,7 +479,7 @@ namespace Kartamania
                     float rr = (Kart.Radius + 20f) * (Kart.Radius + 20f);
                     foreach (Kart k in Karts)
                     {
-                        if (k.Eliminated) continue;
+                        if (k.Eliminated || k.Finished) continue;
                         if (k == m.Owner && m.Arm > 0f) continue;
                         if (Vector2.DistanceSquared(k.Pos, m.Pos) < rr)
                         {
@@ -537,17 +543,23 @@ namespace Kartamania
 
         // ------------------------------------------------------------------ collisions
 
+        void ApplyCollisionSlow(Kart k, float duration)
+        {
+            k.SlowTimer = Math.Max(k.SlowTimer, duration);
+            k.Speed = Math.Min(k.Speed, BaseSpeed * CollisionSlowFactor);
+        }
+
         void KartCollisions()
         {
             const float minD = Kart.Radius * 1.7f;
             for (int i = 0; i < Karts.Count; i++)
             {
                 Kart a = Karts[i];
-                if (a.Eliminated) continue;
+                if (a.Eliminated || a.Finished) continue;
                 for (int j = i + 1; j < Karts.Count; j++)
                 {
                     Kart b = Karts[j];
-                    if (b.Eliminated) continue;
+                    if (b.Eliminated || b.Finished) continue;
                     Vector2 d = b.Pos - a.Pos;
                     float dist = d.Length();
                     if (dist >= minD || dist < 0.001f) continue;
@@ -563,8 +575,8 @@ namespace Kartamania
                         Vector2 imp = n * (rel * 0.6f);
                         a.Vel -= imp;
                         b.Vel += imp;
-                        a.Speed *= 0.98f;
-                        b.Speed *= 0.98f;
+                        ApplyCollisionSlow(a, KartSlowDuration);
+                        ApplyCollisionSlow(b, KartSlowDuration);
                     }
                 }
             }
@@ -575,7 +587,7 @@ namespace Kartamania
             float min = Kart.Radius * 0.9f + ObstacleRadius;
             foreach (Kart k in Karts)
             {
-                if (k.Eliminated) continue;
+                if (k.Eliminated || k.Finished) continue;
                 foreach (Vector2 o in Track.ObstaclePos)
                 {
                     Vector2 d = k.Pos - o;
@@ -586,7 +598,7 @@ namespace Kartamania
                     k.Pos = o + n * min;
                     float vn = Vector2.Dot(k.Vel, n);
                     if (vn < 0f) k.Vel -= n * (vn * 1.5f);
-                    k.Speed *= 0.4f;
+                    ApplyCollisionSlow(k, ObstacleSlowDuration);
                     if (k.SpinTimer <= 0f)
                     {
                         k.SpinTimer = 0.7f;
