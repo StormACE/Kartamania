@@ -28,6 +28,7 @@ namespace Kartamania
 
         GameSettings cfg;
         readonly List<Point> resolutions = new List<Point>();
+        readonly List<int> refreshRates = new List<int>();
         int resIdx;
 
         List<FaceInfo> faces;
@@ -88,22 +89,31 @@ namespace Kartamania
         void BuildResolutionList()
         {
             DisplayMode desktop = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+            int fallback = Math.Max(60, DisplayRefresh.Current());
+            var rates = DisplayRefresh.AllModes();
             foreach (DisplayMode m in GraphicsAdapter.DefaultAdapter.SupportedDisplayModes)
             {
                 if (m.Width < 1024 || m.Height < 576) continue;
                 var p = new Point(m.Width, m.Height);
-                if (!resolutions.Contains(p)) resolutions.Add(p);
+                if (!rates.ContainsKey(p)) rates[p] = fallback;
             }
             Point[] standard = { new Point(1280, 720), new Point(1600, 900), new Point(1920, 1080), new Point(2560, 1440), new Point(3840, 2160) };
             foreach (Point p in standard)
-                if (p.X <= desktop.Width && p.Y <= desktop.Height && !resolutions.Contains(p)) resolutions.Add(p);
-            if (resolutions.Count == 0) resolutions.Add(new Point(1280, 720));
+                if (p.X <= desktop.Width && p.Y <= desktop.Height && !rates.ContainsKey(p)) rates[p] = fallback;
+            if (rates.Count == 0) rates[new Point(1280, 720)] = fallback;
 
-            resolutions.Sort((a, b) =>
+            var modes = rates.ToList();
+            modes.Sort((a, b) =>
             {
-                int c = (a.X * a.Y).CompareTo(b.X * b.Y);
-                return c != 0 ? c : a.X.CompareTo(b.X);
+                Point x = a.Key, y = b.Key;
+                int c = (x.X * x.Y).CompareTo(y.X * y.Y);
+                return c != 0 ? c : x.X.CompareTo(y.X);
             });
+            foreach (var mode in modes)
+            {
+                resolutions.Add(mode.Key);
+                refreshRates.Add(Math.Max(60, mode.Value));
+            }
 
             resIdx = resolutions.FindIndex(p => p.X == cfg.Width && p.Y == cfg.Height);
             if (resIdx < 0)
@@ -129,6 +139,7 @@ namespace Kartamania
             gfx.ApplyChanges();
 
             int cap = GameSettings.FpsCaps[cfg.FpsIndex];
+            if (cap == 0 && resIdx >= 0 && resIdx < refreshRates.Count) cap = refreshRates[resIdx];
             if (cap > 0)
             {
                 IsFixedTimeStep = true;
@@ -373,7 +384,7 @@ namespace Kartamania
         void CycleView(int dir)
         {
             var karts = new List<Kart>();
-            foreach (Kart k in race.Karts)
+            foreach (Kart k in race.Ranking)
                 if (!k.Eliminated) karts.Add(k);
             if (karts.Count <= 1) return;
             int idx = karts.IndexOf(ViewKart());
@@ -779,6 +790,7 @@ namespace Kartamania
             float u = h / 1080f;
             float m = 24f * u;
             Kart p = race.Player;
+            Kart view = ViewKart();
             Vector2 up = M.Rot(new Vector2(0f, -1f), -camRot);
 
             // Noms et points de vie au-dessus des karts.
@@ -800,7 +812,7 @@ namespace Kartamania
                 float gap = 6f * u;
                 Text(Loc.Get("HUD_LAP") + Math.Min(Math.Max(p.Lap + 1, 1), race.TotalLaps) + "/" + race.TotalLaps, m, m, ts, Color.White);
                 float posY = m + lh + gap;
-                Text("POS " + p.Place + "/" + race.Karts.Count, m, posY, ts, new Color(255, 215, 60));
+                Text("POS " + view.Place + "/" + race.Karts.Count, m, posY, ts, new Color(255, 215, 60));
                 int ls = T(2.5f);
                 float lblY = posY + lh + gap;
                 Text(Loc.Get("HUD_HEALTH"), m, lblY, ls, Color.White * 0.85f);
