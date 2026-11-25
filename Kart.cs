@@ -37,7 +37,7 @@ namespace Kartamania
         public int FinishOrder, Kills;
         public float FinishTime, ElimTime;
 
-        public float SpinTimer, SpinVisual, Invuln, BoostTimer, ShieldTimer, SlowTimer;
+        public float SpinTimer, SpinVisual, Invuln, BoostTimer, ShieldTimer, SlowTimer, StuckTimer;
         public ItemType Item;
 
         // IA

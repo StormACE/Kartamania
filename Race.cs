@@ -29,6 +29,8 @@ namespace Kartamania
         public const float CollisionSlowFactor = 0.5f;
         public const float KartSlowDuration = 2f;
         public const float ObstacleSlowDuration = 3f;
+        public const float StuckDelay = 5f;
+        public const float RespawnClearance = 120f;
 
         public readonly Track Track;
         public readonly List<Kart> Karts = new List<Kart>();
@@ -129,7 +131,7 @@ namespace Kartamania
             }
 
             KartCollisions();
-            ObstacleCollisions();
+            ObstacleCollisions(dt);
             BoxPickups(dt);
             UpdateMissiles(dt);
             UpdateMines(dt);
@@ -582,16 +584,24 @@ namespace Kartamania
             }
         }
 
-        void ObstacleCollisions()
+        void ObstacleCollisions(float dt)
         {
             float min = Kart.Radius * 0.9f + ObstacleRadius;
+            float contact = min + 10f;
             foreach (Kart k in Karts)
             {
-                if (k.Eliminated || k.Finished) continue;
+                if (k.Eliminated || k.Finished)
+                {
+                    k.StuckTimer = 0f;
+                    continue;
+                }
+
+                bool touching = false;
                 foreach (Vector2 o in Track.ObstaclePos)
                 {
                     Vector2 d = k.Pos - o;
                     float dist = d.Length();
+                    if (dist < contact) touching = true;
                     if (dist >= min || dist < 0.001f) continue;
 
                     Vector2 n = d / dist;
@@ -605,7 +615,52 @@ namespace Kartamania
                         Burst(o, Color.Orange, 8, 160f);
                     }
                 }
+
+                if (touching)
+                {
+                    k.StuckTimer += dt;
+                    if (k.StuckTimer >= StuckDelay) Respawn(k);
+                }
+                else k.StuckTimer = 0f;
             }
+        }
+
+        bool SafeRespawn(int idx)
+        {
+            float clear = RespawnClearance * RespawnClearance;
+            foreach (Vector2 o in Track.ObstaclePos)
+                if (Vector2.DistanceSquared(Track.Center[idx], o) < clear) return false;
+            return true;
+        }
+
+        int FindSafeRespawn(int idx)
+        {
+            for (int off = 0; off <= Track.N / 2; off++)
+            {
+                int ahead = (idx + off) % Track.N;
+                int behind = ((idx - off) % Track.N + Track.N) % Track.N;
+                if (SafeRespawn(ahead)) return ahead;
+                if (behind != ahead && SafeRespawn(behind)) return behind;
+            }
+            return idx;
+        }
+
+        void Respawn(Kart k)
+        {
+            int idx = FindSafeRespawn(k.Idx);
+            k.Idx = idx;
+            k.Pos = Track.Center[idx];
+            k.Angle = M.Angle(Track.Tangent[idx]);
+            k.Speed = 0f;
+            k.Vel = Vector2.Zero;
+            k.SpinTimer = 0f;
+            k.SpinVisual = 0f;
+            k.SlowTimer = 0f;
+            k.StuckTimer = 0f;
+            k.OffRoad = false;
+            UpdateProgress(k);
+            Burst(k.Pos, Color.Cyan, 12, 200f);
+            Say(k.Name + " REMIS SUR LA PISTE!");
         }
 
         // ------------------------------------------------------------------ classement, effets
