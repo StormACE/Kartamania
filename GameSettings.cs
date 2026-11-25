@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 
 namespace Kartamania
@@ -13,8 +15,28 @@ namespace Kartamania
         public bool VSync = false;
         public int FpsIndex = 1;            // 120 FPS par défaut
         public int Track, Player, Difficulty = 1, Laps = 3, RacerCount = 6;
+        public readonly Dictionary<string, float> BestTimes = new Dictionary<string, float>();
 
         static string FilePath => Path.Combine(AppContext.BaseDirectory, "settings.txt");
+
+        public static string BestKey(string trackName, int laps) => trackName + "|" + laps;
+
+        public float GetBestTime(string trackName, int laps)
+        {
+            float time;
+            return BestTimes.TryGetValue(BestKey(trackName, laps), out time) ? time : 0f;
+        }
+
+        public bool RecordTime(string trackName, int laps, float time)
+        {
+            if (time <= 0f) return false;
+            string key = BestKey(trackName, laps);
+            float previous;
+            if (BestTimes.TryGetValue(key, out previous) && previous <= time) return false;
+            BestTimes[key] = time;
+            Save();
+            return true;
+        }
 
         public static GameSettings Load()
         {
@@ -42,6 +64,19 @@ namespace Kartamania
                         case "difficulty": if (isInt) s.Difficulty = Math.Max(0, Math.Min(2, n)); break;
                         case "laps": if (isInt) s.Laps = Math.Max(1, Math.Min(9, n)); break;
                         case "pilots": if (isInt) s.RacerCount = Math.Max(1, Math.Min(10, n)); break;
+                        case "best":
+                            {
+                                string[] parts = val.Split('|');
+                                float best;
+                                if (parts.Length == 3 && parts[0].Length > 0 &&
+                                    float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out best) && best > 0f)
+                                {
+                                    string bestKey = parts[0] + "|" + parts[1];
+                                    float old;
+                                    if (!s.BestTimes.TryGetValue(bestKey, out old) || best < old) s.BestTimes[bestKey] = best;
+                                }
+                            }
+                            break;
                     }
                 }
             }
@@ -53,13 +88,16 @@ namespace Kartamania
         {
             try
             {
-                File.WriteAllLines(FilePath, new[]
+                var lines = new List<string>
                 {
                     "width=" + Width, "height=" + Height,
                     "fullscreen=" + (Fullscreen ? 1 : 0), "vsync=" + (VSync ? 1 : 0), "fps=" + FpsIndex,
                     "track=" + Track, "player=" + Player, "difficulty=" + Difficulty, "laps=" + Laps,
                     "pilots=" + RacerCount,
-                });
+                };
+                foreach (var entry in BestTimes)
+                    lines.Add("best=" + entry.Key + "|" + entry.Value.ToString("R", CultureInfo.InvariantCulture));
+                File.WriteAllLines(FilePath, lines);
             }
             catch { }
         }

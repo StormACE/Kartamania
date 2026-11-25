@@ -30,6 +30,8 @@ Chaque kart a 4 points de vie. À 0, il est éliminé.
  Traverse une boîte dorée pour piocher une arme : **missile** à tête chercheuse, **mine** déposée derrière toi, **turbo**, **bouclier** (bloque le prochain coup).  
    
  Les cônes orange font déraper (sans perte de vie). L'herbe ralentit de moitié.  
+**Meilleur temps**  
+Le meilleur temps du joueur est sauvegardé pour chaque piste et chaque nombre de tours dans `settings.txt`, et affiché à la fin de la course.  
 **Résolution et 120 fps**  
 Le menu permet de choisir la résolution (liste des modes de ton écran), plein écran ou fenêtre, VSync et la limite de FPS (60, 120, 144, 240, illimité).  
    

@@ -40,6 +40,7 @@ namespace Kartamania
         State state = State.Menu;
         int sel;
         Race race;
+        bool newRecord;
 
         KeyboardState kb, pkb;
         GamePadState pad, ppad;
@@ -320,6 +321,7 @@ namespace Kartamania
             camAngle = race.Player.Angle;
             camPos = race.Player.Pos + race.Player.Heading * 260f;
             steerSmooth = 0f;
+            newRecord = false;
             state = State.Racing;
         }
 
@@ -367,7 +369,13 @@ namespace Kartamania
             camPos = Vector2.Lerp(camPos, target, 1f - (float)Math.Exp(-9f * dt));
             camAngle += M.WrapAngle(p.Angle - camAngle) * (1f - (float)Math.Exp(-5f * dt));
 
-            if (race.Over) state = State.Results;
+            if (race.Over)
+            {
+                newRecord = false;
+                if (p.Finished && !p.Eliminated && p.Lap >= race.TotalLaps)
+                    newRecord = cfg.RecordTime(race.Track.Def.Name, race.TotalLaps, p.FinishTime);
+                state = State.Results;
+            }
         }
 
         void UpdatePause()
@@ -870,6 +878,11 @@ namespace Kartamania
             string title = p.Eliminated ? "ELIMINE!" : (p.Place == 1 ? "VICTOIRE!" : "COURSE TERMINEE");
             Color tc = p.Eliminated ? Color.OrangeRed : (p.Place == 1 ? new Color(255, 215, 60) : Color.White);
             Text(title, w * 0.5f, h * 0.04f, T(11), tc, true);
+
+            float best = cfg.GetBestTime(race.Track.Def.Name, race.TotalLaps);
+            string bestLine = "MEILLEUR TEMPS " + race.TotalLaps + " TOURS : " + (best > 0f ? FormatTime(best) : "--:--.-");
+            Text(bestLine, w * 0.5f, h * 0.115f, T(4), new Color(255, 215, 60), true);
+            if (newRecord) Text("NOUVEAU RECORD!", w * 0.5f, h * 0.155f, T(3), new Color(120, 255, 120), true);
 
             int count = Math.Max(1, race.Ranking.Count);
             float top = h * 0.20f;

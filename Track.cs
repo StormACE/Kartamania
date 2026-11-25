@@ -128,7 +128,7 @@ namespace Kartamania
     {
         static Vector2 V(float x, float y) => new Vector2(x, y);
 
-        public static TrackDef[] All() => new[] { Salon(), Lac(), SousSol() };
+        public static TrackDef[] All() => new[] { Salon(), Lac(), SousSol(), Desert(), Etoile() };
 
         static TrackDef Salon() => new TrackDef
         {
@@ -166,6 +166,44 @@ namespace Kartamania
                 V(0.05f, 50), V(0.09f, -60), V(0.14f, 30), V(0.19f, -70), V(0.23f, 65), V(0.29f, -35), V(0.33f, 60),
                 V(0.37f, -65), V(0.43f, 40), V(0.47f, -55), V(0.52f, 70), V(0.57f, -30), V(0.62f, 55), V(0.66f, -70),
                 V(0.72f, 35), V(0.76f, -60), V(0.81f, 65), V(0.87f, -45), V(0.91f, 60), V(0.95f, -35),
+            },
+        };
+
+        static TrackDef Desert() => new TrackDef
+        {
+            Name = "Desert du Sud",
+            Width = 300f,
+            Grass = new Color(220, 190, 125), Rough = new Color(198, 160, 95), Road = new Color(120, 105, 92),
+            Points = new[]
+            {
+                V(-2000, -900), V(-1000, -1100), V(1000, -1100), V(2000, -900), V(2300, -200), V(1700, 200),
+                V(1800, 900), V(900, 1100), V(-900, 1100), V(-1800, 900), V(-2300, 200), V(-1700, -200),
+            },
+            BoxRows = new[] { 0.08f, 0.30f, 0.55f, 0.80f },
+            Obstacles = new[]
+            {
+                V(0.14f, -100), V(0.26f, 90), V(0.38f, -100), V(0.50f, 95),
+                V(0.62f, -90), V(0.74f, 100), V(0.88f, -95),
+            },
+        };
+
+        static TrackDef Etoile() => new TrackDef
+        {
+            Name = "Etoile du Nord",
+            Width = 220f,
+            Scale = 1.25f,
+            Grass = new Color(35, 70, 95), Rough = new Color(28, 55, 75), Road = new Color(150, 165, 175),
+            Points = new[]
+            {
+                V(0, -1500), V(900, -1200), V(1600, -600), V(1200, 0), V(2000, 600), V(1500, 1300), V(400, 1100),
+                V(-400, 1500), V(-1400, 1100), V(-1200, 400), V(-2000, 0), V(-1400, -800), V(-600, -1200),
+            },
+            BoxRows = new[] { 0.12f, 0.35f, 0.58f, 0.82f },
+            Obstacles = new[]
+            {
+                V(0.05f, 70), V(0.11f, -60), V(0.18f, 65), V(0.24f, -70), V(0.31f, 60), V(0.37f, -65),
+                V(0.44f, 70), V(0.52f, -60), V(0.59f, 65), V(0.66f, -70), V(0.73f, 60), V(0.79f, -65),
+                V(0.86f, 70), V(0.93f, -60),
             },
         };
     }
