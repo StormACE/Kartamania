@@ -29,6 +29,9 @@ namespace Kartamania
         public const float CollisionSlowFactor = 0.5f;
         public const float KartSlowDuration = 2f;
         public const float ObstacleSlowDuration = 3f;
+        public const float RearPushMin = 240f;
+        public const float RearPushMax = 520f;
+        public const float RearPushScale = 0.5625f;
         public const float StuckDelay = 5f;
         public const float RespawnClearance = 120f;
 
@@ -551,6 +554,26 @@ namespace Kartamania
             k.Speed = Math.Min(k.Speed, BaseSpeed * CollisionSlowFactor);
         }
 
+        static Kart BehindOf(Kart a, Kart b, Vector2 n)
+        {
+            Vector2 fwd = a.Vel + b.Vel;
+            if (fwd.LengthSquared() < 400f) fwd = a.Heading + b.Heading;
+            if (fwd.LengthSquared() < 0.01f) return null;
+            float along = Vector2.Dot(n, Vector2.Normalize(fwd));
+            if (Math.Abs(along) < 0.4f) return null;
+            return along > 0f ? a : b;
+        }
+
+        void PushFromBehind(Kart behind, Kart ahead, float impact)
+        {
+            float force = M.Clamp(impact * 1.2f + behind.Speed * 0.5f, RearPushMin, RearPushMax) * RearPushScale;
+            ahead.SlowTimer = 0f;
+            ahead.SpinTimer = 0f;
+            ahead.Speed = Math.Max(ahead.Speed, Math.Min(behind.Speed + force, BaseSpeed * 1.45f * RearPushScale));
+            ahead.Vel += ahead.Heading * force;
+            ApplyCollisionSlow(behind, KartSlowDuration);
+        }
+
         void KartCollisions()
         {
             const float minD = Kart.Radius * 1.7f;
@@ -577,8 +600,14 @@ namespace Kartamania
                         Vector2 imp = n * (rel * 0.6f);
                         a.Vel -= imp;
                         b.Vel += imp;
-                        ApplyCollisionSlow(a, KartSlowDuration);
-                        ApplyCollisionSlow(b, KartSlowDuration);
+
+                        Kart behind = BehindOf(a, b, n);
+                        if (behind != null) PushFromBehind(behind, behind == a ? b : a, rel);
+                        else
+                        {
+                            ApplyCollisionSlow(a, KartSlowDuration);
+                            ApplyCollisionSlow(b, KartSlowDuration);
+                        }
                     }
                 }
             }
