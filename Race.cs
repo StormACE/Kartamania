@@ -140,22 +140,24 @@ namespace Kartamania
 
             if (overTimer < 0f)
             {
-                if (Player.Eliminated) overTimer = 2.2f;
-                else if (Player.Finished) overTimer = 3f;
-                else
+                if (!Player.Finished && !Player.Eliminated)
                 {
                     bool anyOpponent = false;
                     foreach (Kart k in Karts)
                         if (k != Player && !k.Eliminated) { anyOpponent = true; break; }
-                    if (!anyOpponent)
+                    if (Karts.Count > 1 && !anyOpponent)
                     {
                         Player.Finished = true;
                         Player.FinishOrder = ++finishCounter;
                         Player.FinishTime = Time;
                         Say("VICTOIRE PAR ELIMINATION!");
-                        overTimer = 2.5f;
                     }
                 }
+
+                bool allDone = true;
+                foreach (Kart k in Karts)
+                    if (!k.Finished && !k.Eliminated) { allDone = false; break; }
+                if (allDone) overTimer = 2.5f;
             }
 
             if (overTimer >= 0f)

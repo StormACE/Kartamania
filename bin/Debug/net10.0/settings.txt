@@ -7,3 +7,4 @@ track=0
 player=0
 difficulty=2
 laps=1
+pilots=10

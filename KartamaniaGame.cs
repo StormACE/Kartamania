@@ -12,7 +12,7 @@ namespace Kartamania
     public sealed class KartamaniaGame : Game
     {
         enum State { Menu, Racing, Paused, Results }
-        enum Row { Play, Track, Player, Difficulty, Laps, Resolution, Display, VSync, Fps, Quit }
+        enum Row { Play, Track, Player, Difficulty, Laps, Pilots, Resolution, Display, VSync, Fps, Quit }
 
         static readonly Row[] Rows = (Row[])Enum.GetValues(typeof(Row));
         static readonly string[] DifficultyNames = { "FACILE", "NORMAL", "DIFFICILE" };
@@ -257,6 +257,10 @@ namespace Kartamania
                     if (dir != 0) cfg.Laps = (int)M.Clamp(cfg.Laps + dir, 1, 9);
                     else if (enter) StartRace();
                     break;
+                case Row.Pilots:
+                    if (dir != 0) cfg.RacerCount = (int)M.Clamp(cfg.RacerCount + dir, 1, 10);
+                    else if (enter) StartRace();
+                    break;
                 case Row.Resolution:
                     if (dir != 0)
                     {
@@ -295,13 +299,13 @@ namespace Kartamania
             FaceInfo me = faces[cfg.Player];
             racers.Add(new RacerInfo { Name = me.Name, Face = me.Texture, Color = KartColors[0], IsPlayer = true });
 
-            var others = faces.Where(f => f != me && !f.IsPlaceholder).OrderBy(f => rng.Next()).Take(7).ToList();
+            var others = faces.Where(f => f != me && !f.IsPlaceholder).OrderBy(f => rng.Next()).Take(cfg.RacerCount - 1).ToList();
             int colorIdx = 1;
             foreach (FaceInfo f in others)
                 racers.Add(new RacerInfo { Name = f.Name, Face = f.Texture, Color = KartColors[colorIdx++ % KartColors.Length] });
 
             int bot = 0;
-            while (racers.Count < 6)
+            while (racers.Count < cfg.RacerCount)
             {
                 racers.Add(new RacerInfo
                 {
@@ -491,6 +495,7 @@ namespace Kartamania
                 case Row.Player: return "JOUEUR: < " + faces[cfg.Player].Name + " >";
                 case Row.Difficulty: return "DIFFICULTE: < " + DifficultyNames[cfg.Difficulty] + " >";
                 case Row.Laps: return "TOURS: < " + cfg.Laps + " >";
+                case Row.Pilots: return "PILOTES: < " + cfg.RacerCount + " >";
                 case Row.Resolution: return "RESOLUTION: < " + resolutions[resIdx].X + "X" + resolutions[resIdx].Y + " >";
                 case Row.Display: return "AFFICHAGE: < " + (cfg.Fullscreen ? "PLEIN ECRAN" : "FENETRE") + " >";
                 case Row.VSync: return "VSYNC: < " + (cfg.VSync ? "OUI" : "NON") + " >";
@@ -824,6 +829,18 @@ namespace Kartamania
             else if (race.Time < 0.9f)
             {
                 Text("GO!", w * 0.5f, h * 0.30f, T(28), new Color(120, 255, 120), true);
+            }
+
+            if (p.Finished || p.Eliminated)
+            {
+                int remaining = 0;
+                foreach (Kart k in race.Karts)
+                    if (!k.Finished && !k.Eliminated) remaining++;
+                if (remaining > 0)
+                {
+                    string msg = "EN ATTENTE DES AUTRES PILOTES : " + remaining + " EN COURSE";
+                    Text(msg, w * 0.5f, h * 0.30f, T(4), new Color(255, 215, 60), true);
+                }
             }
 
             // Aide aux commandes au début de course : grande, sur fond sombre, adaptée au périphérique.

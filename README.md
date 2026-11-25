@@ -9,7 +9,7 @@ Mets les photos dans le dossier `Faces` du projet (PNG, JPG, BMP, GIF), une par 
    
  Elles sont copiées à côté de l'exécutable au lancement. Tu peux aussi les déposer directement dans `bin\Debug\net10.0\Faces`.  
    
- Moins de 6 photos : des pilotes « robot » complètent la grille. Plus de 8 : 7 adversaires sont tirés au hasard à chaque course.  
+  Le menu permet de choisir entre 1 et 10 pilotes. S'il y a moins de photos que de pilotes choisis, des pilotes « robot » complètent la grille ; sinon, les adversaires sont tirés au hasard à chaque course.
    
  Si une photo apparaît couchée (photo de téléphone), pivote-la dans Photos ou Paint et enregistre-la.  
 **Commandes**  
