@@ -24,3 +24,4 @@ best=Rallye du Sous-sol|1|44.07343
 best=Désert du Sud|1|26.132269
 best=Huit de la Ville|5|107.826614
 best=Huit de la Ville|4|73.753685
+best=Huit de la Ville|3|102.24673

@@ -81,6 +81,8 @@ namespace Kartamania
             { "MSG_SELF_ELIM", new[] { " S'EST ÉLIMINÉ!", " ELIMINATED THEMSELVES!" } },
             { "MSG_HIT", new[] { " TOUCHÉ ", " HIT " } },
             { "MSG_RESPAWN", new[] { " REMIS SUR LA PISTE!", " BACK ON TRACK!" } },
+            { "PENALTY_TITLE", new[] { "PÉNALITÉ !", "PENALTY!" } },
+            { "PENALTY_RETURN", new[] { "VOUS DEVEZ REVENIR À LA LIGNE DE DÉPART", "YOU MUST RETURN TO THE START LINE" } },
             { "MSG_BOOST", new[] { " BOOST DE DÉPART!", " ROCKET START!" } },
             { "HINT_ROCKET", new[] { "APPUIE ACCÉLÉRATEUR MAINTENANT!", "PRESS ACCELERATE NOW!" } },
         };

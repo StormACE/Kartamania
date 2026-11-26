@@ -33,7 +33,7 @@ namespace Kartamania
         public int Place;
 
         public int Hp = MaxHp;
-        public bool Eliminated, Finished, OffRoad;
+        public bool Eliminated, Finished, OffRoad, OutsideCourse;
         public int FinishOrder, Kills;
         public float FinishTime, ElimTime;
 

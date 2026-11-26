@@ -38,6 +38,7 @@ namespace Kartamania
         public const int GridRowSpacing = 5;
         public const float RocketStartWindow = 0.4f;
         public const float RocketStartDuration = 1.2f;
+        public const float PenaltyMessageDuration = 3.5f;
 
         public readonly Track Track;
         public readonly List<Kart> Karts = new List<Kart>();
@@ -51,6 +52,7 @@ namespace Kartamania
 
         public float Countdown = 3f;
         public float Time;
+        public float ShortcutPenaltyTimer;
         public bool Over;
 
         public IReadOnlyList<Kart> Ranking => ranking;
@@ -138,6 +140,7 @@ namespace Kartamania
             }
 
             Time += dt;
+            if (ShortcutPenaltyTimer > 0f) ShortcutPenaltyTimer -= dt;
 
             for (int i = 0; i < Karts.Count; i++)
             {
@@ -214,7 +217,7 @@ namespace Kartamania
 
             float maxSpeed = BaseSpeed * difficultySpeed * (k.IsPlayer ? 1f : k.AiSkill);
             if (k.BoostTimer > 0f) maxSpeed *= 1.45f;
-            if (k.OffRoad) maxSpeed *= 0.5f;
+            if (k.OffRoad && !k.OutsideCourse) maxSpeed *= 0.5f;
             if (k.SlowTimer > 0f) maxSpeed *= CollisionSlowFactor;
 
             if (throttle > 0f)
@@ -304,22 +307,30 @@ namespace Kartamania
         void TrackStateStrict(Kart k, float dt, Vector2 prev)
         {
             int old = k.Idx;
-            int idx = Track.Nearest(k.Pos, old, 10);
+            bool junction = false;
+            float crossR = Track.HalfWidth + Track.Shoulder * 2f;
+            for (int c = 0; c < Track.CrossingIndex.Length; c++)
+            {
+                if ((k.Pos - Track.Center[Track.CrossingIndex[c]]).Length() <= crossR) { junction = true; break; }
+            }
+
+            int idx = junction ? Track.NearestAny(k.Pos) : Track.Nearest(k.Pos, old, 10);
             k.Idx = idx;
 
             Vector2 off = k.Pos - Track.Center[idx];
             float dist = off.Length();
-            k.OffRoad = dist > Track.HalfWidth;
+
+            if (junction && !k.OutsideCourse && Track.LoopDistance(old, idx) > Track.N / 8) PenalizeShortcut(k);
+
+            k.OffRoad = dist > Track.HalfWidth && !junction;
 
             float limit = Track.HalfWidth + Track.Shoulder;
-            if (dist > limit)
+            if (dist > limit && !junction)
             {
                 Vector2 n = off / dist;
                 k.Pos = Track.Center[idx] + n * limit;
                 float vn = Vector2.Dot(k.Vel, n);
                 if (vn > 0f) k.Vel -= n * vn * 1.3f;
-                k.Speed *= Math.Max(0f, 1f - 3f * dt);
-                Sfx.Wall(k.IsPlayer);
             }
 
             if (Track.Gates.Length > 0)
@@ -329,29 +340,33 @@ namespace Kartamania
                 float lateral;
                 if (gate.Crossed(prev, k.Pos, out lateral))
                 {
-                    if (next == 0) { k.Lap++; if (k.IsPlayer) Sfx.Lap(); }
+                    if (next == 0)
+                    {
+                        k.Lap++;
+                        k.OutsideCourse = false;
+                        if (k.IsPlayer) Sfx.Lap();
+                    }
                     k.LastGateIndex = gate.Index;
                     k.NextGate = (next + 1) % Track.Gates.Length;
-                }
-                else
-                {
-                    bool skipped = false;
-                    for (int g = 0; g < Track.Gates.Length; g++)
-                    {
-                        if (g == next) continue;
-                        if (Track.Forward(k.LastGateIndex, Track.Gates[g].Index) < Track.N / 32) continue;
-                        float dummy;
-                        if (Track.Gates[g].Crossed(prev, k.Pos, out dummy)) { skipped = true; break; }
-                    }
-                    int passed = Track.Forward(k.LastGateIndex, idx);
-                    int expected = Track.Forward(k.LastGateIndex, gate.Index);
-                    if (skipped || passed > expected + Track.N / 16) RespawnAtGate(k);
                 }
             }
 
             k.PrevPos = k.Pos;
             UpdateProgress(k);
             CheckFinish(k);
+        }
+
+        void PenalizeShortcut(Kart k)
+        {
+            k.OutsideCourse = true;
+            if (k.Finished || k.Eliminated) return;
+
+            if (k.Lap > -1) k.Lap--;
+            k.NextGate = 0;
+            k.LastGateIndex = Track.Gates.Length > 0 ? Track.Gates[Track.Gates.Length - 1].Index : k.Idx;
+            if (k.IsPlayer) ShortcutPenaltyTimer = PenaltyMessageDuration;
+            Burst(k.Pos, Color.OrangeRed, 18, 320f);
+            Sfx.Wall(k.IsPlayer);
         }
 
         void CheckFinish(Kart k)
@@ -762,11 +777,7 @@ namespace Kartamania
                 if (touching)
                 {
                     k.StuckTimer += dt;
-                    if (k.StuckTimer >= StuckDelay)
-                    {
-                        if (Track.Def.StrictCourse) RespawnAtGate(k);
-                        else Respawn(k);
-                    }
+                    if (k.StuckTimer >= StuckDelay) Respawn(k);
                 }
                 else k.StuckTimer = 0f;
             }
@@ -805,35 +816,7 @@ namespace Kartamania
             k.SlowTimer = 0f;
             k.StuckTimer = 0f;
             k.OffRoad = false;
-            UpdateProgress(k);
-            Burst(k.Pos, Color.Cyan, 12, 200f);
-            Sfx.Respawn(k.IsPlayer);
-            Say(k.Name + Loc.Get("MSG_RESPAWN"));
-        }
-
-        void RespawnAtGate(Kart k)
-        {
-            int start = M.Wrap(k.LastGateIndex + 3, Track.N);
-            int idx = start;
-            for (int off = 0; off < Track.N / 4; off++)
-            {
-                int candidate = (start + off) % Track.N;
-                if (SafeRespawn(candidate)) { idx = candidate; break; }
-            }
-
-            float lane = M.Clamp(Vector2.Dot(k.Pos - Track.Center[idx], Track.Normal[idx]),
-                                 -Track.Def.LaneLimit, Track.Def.LaneLimit);
-            k.Idx = idx;
-            k.Pos = Track.Center[idx] + Track.Normal[idx] * lane;
-            k.PrevPos = k.Pos;
-            k.Angle = M.Angle(Track.Tangent[idx]);
-            k.Speed = 0f;
-            k.Vel = Vector2.Zero;
-            k.SpinTimer = 0f;
-            k.SpinVisual = 0f;
-            k.SlowTimer = 0f;
-            k.StuckTimer = 0f;
-            k.OffRoad = false;
+            k.OutsideCourse = false;
             UpdateProgress(k);
             Burst(k.Pos, Color.Cyan, 12, 200f);
             Sfx.Respawn(k.IsPlayer);

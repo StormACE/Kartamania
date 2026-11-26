@@ -42,6 +42,8 @@ namespace Kartamania
         Race race;
         bool newRecord;
         int countdownBeep;
+        float penaltyBannerTimer;
+        bool penaltyBannerWasActive;
 
         KeyboardState kb, pkb;
         GamePadState pad, ppad;
@@ -396,6 +398,8 @@ namespace Kartamania
             steerSmooth = 0f;
             newRecord = false;
             countdownBeep = 4;
+            penaltyBannerTimer = 0f;
+            penaltyBannerWasActive = false;
             Sfx.StopEngine();
             Sfx.StartEngine();
             MusicPlayer.PlayRandom();
@@ -458,6 +462,12 @@ namespace Kartamania
             }
 
             race.Update(dt, ReadInput(dt));
+
+            bool penalized = race.Player != null && race.Player.OutsideCourse;
+            if (penalized && !penaltyBannerWasActive) penaltyBannerTimer = Race.PenaltyMessageDuration;
+            penaltyBannerWasActive = penalized;
+            if (race.ShortcutPenaltyTimer > penaltyBannerTimer) penaltyBannerTimer = race.ShortcutPenaltyTimer;
+            if (penaltyBannerTimer > 0f) penaltyBannerTimer -= dt;
 
             int count = (int)Math.Ceiling(race.Countdown);
             if (race.Countdown > 0f && count < countdownBeep && count >= 1)
@@ -692,6 +702,7 @@ namespace Kartamania
                 DrawWorld();
                 sb.Begin(samplerState: SamplerState.LinearClamp);
                 DrawHud();
+                if (state == State.Racing) DrawPenalty();
                 if (state == State.Racing) DrawFinishBanner();
                 if (state == State.Paused) DrawPause();
                 if (state == State.Results) DrawResults();
@@ -874,16 +885,20 @@ namespace Kartamania
                 }
             }
 
-            // Barrières (pneus) de chaque côté.
+            // Barrières (pneus) de chaque côté : absentes de la piste en huit.
             float wall = tr.HalfWidth + Track.Shoulder;
-            for (int i = 0; i < n; i += 2)
+            if (!def.StrictCourse)
             {
-                if (Vector2.DistanceSquared(tr.Center[i], camPos) > cull2) continue;
-                if (city && tr.IsNearCrossing(i, 12)) continue;
-                Color bc = ((i / 2) % 2 == 0) ? new Color(210, 40, 40) : Color.White;
-                Disc(tr.Center[i] + tr.Normal[i] * wall, 22f, bc);
-                Disc(tr.Center[i] - tr.Normal[i] * wall, 22f, bc);
+                for (int i = 0; i < n; i += 2)
+                {
+                    if (Vector2.DistanceSquared(tr.Center[i], camPos) > cull2) continue;
+                    if (city && tr.IsNearCrossing(i, 12)) continue;
+                    Color bc = ((i / 2) % 2 == 0) ? new Color(210, 40, 40) : Color.White;
+                    Disc(tr.Center[i] + tr.Normal[i] * wall, 22f, bc);
+                    Disc(tr.Center[i] - tr.Normal[i] * wall, 22f, bc);
+                }
             }
+
 
             for (int i = 0; i < n; i += 8)
             {
@@ -1138,6 +1153,19 @@ namespace Kartamania
             float oy = H * 0.70f;
             for (int i = 0; i < opts.Length; i++)
                 Text(opts[i], W * 0.5f, oy + i * T(4) * 8f, T(4), Color.White, true);
+        }
+
+        void DrawPenalty()
+        {
+            if (penaltyBannerTimer <= 0f) return;
+            float fade = M.Clamp(penaltyBannerTimer * 2f, 0f, 1f);
+
+            int title = T(24);
+            float y = H * 0.12f;
+            Rect(0, y, W, H * 0.32f, Color.Black * 0.8f * fade);
+            Rect(0, y, W, T(6), Color.OrangeRed * fade);
+            Text(Loc.Get("PENALTY_TITLE"), W * 0.5f, y + H * 0.03f, title, Color.OrangeRed * fade, true);
+            Text(Loc.Get("PENALTY_RETURN"), W * 0.5f, y + H * 0.03f + title * 7f, T(5), Color.White * fade, true);
         }
 
         void DrawFinishBanner()

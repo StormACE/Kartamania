@@ -208,6 +208,18 @@ namespace Kartamania
             }
             return best;
         }
+
+        public int NearestAny(Vector2 p)
+        {
+            int best = 0;
+            float bd = float.MaxValue;
+            for (int i = 0; i < N; i++)
+            {
+                float d = Vector2.DistanceSquared(p, Center[i]);
+                if (d < bd) { bd = d; best = i; }
+            }
+            return best;
+        }
     }
 
     /// <summary>
