@@ -14,8 +14,8 @@ namespace Kartamania
     }
 
     /// <summary>
-    /// Charge les photos du dossier "Faces" (png, jpg, bmp, gif), les recadre au centre du visage
-    /// et les transforme en médaillons ronds. Le nom du fichier devient le nom du pilote.
+    /// Charge les images du dossier "Faces" (png, jpg, bmp, gif). Les PNG avec transparence gardent
+    /// leur fond transparent ; les photos opaques deviennent des médaillons ronds. Le nom du fichier devient le nom du pilote.
     /// </summary>
     public static class FaceLoader
     {
@@ -71,44 +71,70 @@ namespace Kartamania
                 tex.GetData(src);
             }
 
-            int side = Math.Min(w, h);
-            int ox = (w - side) / 2;
-            int oy = (int)((h - side) * 0.3f);      // sur une photo en portrait, le visage est plutôt en haut
-            float block = side / (float)Size;
-            int n = Math.Max(1, Math.Min(4, (int)Math.Ceiling(block)));
+            bool transparent = false;
+            for (int i = 0; i < src.Length; i++)
+            {
+                if (src[i].A < 255) { transparent = true; break; }
+            }
 
             var dst = new Color[Size * Size];
-            float r = Size * 0.5f;
-            for (int y = 0; y < Size; y++)
+            if (transparent)
             {
-                for (int x = 0; x < Size; x++)
+                float scale = Math.Min((float)Size / w, (float)Size / h);
+                int dw = Math.Max(1, (int)(w * scale));
+                int dh = Math.Max(1, (int)(h * scale));
+                int ox = (Size - dw) / 2;
+                int oy = (Size - dh) / 2;
+                for (int y = 0; y < dh; y++)
                 {
-                    float dx = x + 0.5f - r, dy = y + 0.5f - r;
-                    float dist = (float)Math.Sqrt(dx * dx + dy * dy);
-                    float mask = M.Clamp(r - dist, 0f, 1f);
-                    if (mask <= 0f) continue;
-
-                    if (dist > r - 5f)
+                    int sy = Math.Min(h - 1, (int)(y / scale));
+                    for (int x = 0; x < dw; x++)
                     {
-                        dst[y * Size + x] = Color.White * mask;
-                        continue;
+                        int sx = Math.Min(w - 1, (int)(x / scale));
+                        dst[(y + oy) * Size + x + ox] = src[sy * w + sx];
                     }
+                }
+            }
+            else
+            {
+                int side = Math.Min(w, h);
+                int ox = (w - side) / 2;
+                int oy = (int)((h - side) * 0.3f);
+                float block = side / (float)Size;
+                int n = Math.Max(1, Math.Min(4, (int)Math.Ceiling(block)));
 
-                    float sr = 0f, sg = 0f, sb = 0f;
-                    for (int j = 0; j < n; j++)
+                float r = Size * 0.5f;
+                for (int y = 0; y < Size; y++)
+                {
+                    for (int x = 0; x < Size; x++)
                     {
-                        for (int i = 0; i < n; i++)
+                        float dx = x + 0.5f - r, dy = y + 0.5f - r;
+                        float dist = (float)Math.Sqrt(dx * dx + dy * dy);
+                        float mask = M.Clamp(r - dist, 0f, 1f);
+                        if (mask <= 0f) continue;
+
+                        if (dist > r - 5f)
                         {
-                            int px = ox + (int)((x + (i + 0.5f) / n) * block);
-                            int py = oy + (int)((y + (j + 0.5f) / n) * block);
-                            if (px >= w) px = w - 1;
-                            if (py >= h) py = h - 1;
-                            Color c = src[py * w + px];
-                            sr += c.R; sg += c.G; sb += c.B;
+                            dst[y * Size + x] = Color.White * mask;
+                            continue;
                         }
+
+                        float sr = 0f, sg = 0f, sb = 0f;
+                        for (int j = 0; j < n; j++)
+                        {
+                            for (int i = 0; i < n; i++)
+                            {
+                                int px = ox + (int)((x + (i + 0.5f) / n) * block);
+                                int py = oy + (int)((y + (j + 0.5f) / n) * block);
+                                if (px >= w) px = w - 1;
+                                if (py >= h) py = h - 1;
+                                Color c = src[py * w + px];
+                                sr += c.R; sg += c.G; sb += c.B;
+                            }
+                        }
+                        float k = 1f / (n * n * 255f);
+                        dst[y * Size + x] = new Color(sr * k * mask, sg * k * mask, sb * k * mask, mask);
                     }
-                    float k = 1f / (n * n * 255f);
-                    dst[y * Size + x] = new Color(sr * k * mask, sg * k * mask, sb * k * mask, mask);   // alpha pré-multiplié
                 }
             }
 
