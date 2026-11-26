@@ -34,6 +34,8 @@ namespace Kartamania
         public const float RearPushScale = 0.5625f;
         public const float StuckDelay = 5f;
         public const float RespawnClearance = 120f;
+        public const float GridSideOffset = 95f;
+        public const int GridRowSpacing = 5;
 
         public readonly Track Track;
         public readonly List<Kart> Karts = new List<Kart>();
@@ -81,11 +83,11 @@ namespace Kartamania
                 int slot = slots[i];
                 int row = slot / 2;
                 float side = (slot % 2 == 0) ? -1f : 1f;
-                int idx = ((track.N - 4 - row * 3) % track.N + track.N) % track.N;
+                int idx = ((track.N - 4 - row * GridRowSpacing) % track.N + track.N) % track.N;
 
                 k.Idx = idx;
                 k.Lap = -1;
-                k.Pos = track.Center[idx] + track.Normal[idx] * (side * 62f);
+                k.Pos = track.Center[idx] + track.Normal[idx] * (side * GridSideOffset);
                 k.Angle = M.Angle(track.Tangent[idx]);
                 k.AiLane = ((float)rng.NextDouble() * 2f - 1f) * 80f;
                 k.AiSkill = 0.94f + (float)rng.NextDouble() * 0.06f;
