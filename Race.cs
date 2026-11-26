@@ -325,13 +325,12 @@ namespace Kartamania
 
             int idx = junction ? Track.NearestAny(k.Pos) : Track.Nearest(k.Pos, old, 10);
             bool switched = false;
-            if (junction && Track.LoopDistance(old, idx) > Track.N / 8)
+            if (junction)
             {
-                Vector2 dir = k.Vel.LengthSquared() > 1f ? k.Vel : Track.Tangent[old];
-                float oldDot = Math.Abs(Vector2.Dot(dir, Track.Tangent[old]));
-                float newDot = Math.Abs(Vector2.Dot(dir, Track.Tangent[idx]));
-                if (newDot > oldDot) switched = true;
-                else idx = Track.Nearest(k.Pos, old, 10);
+                int oldBranch = Track.Nearest(k.Pos, old, 40);
+                float oldDist = (k.Pos - Track.Center[oldBranch]).Length();
+                if (oldDist <= Track.HalfWidth + Track.Shoulder) idx = oldBranch;
+                else if (Track.LoopDistance(old, idx) > Track.N / 8) switched = true;
             }
             k.Idx = idx;
 
