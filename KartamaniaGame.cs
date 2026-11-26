@@ -72,7 +72,7 @@ namespace Kartamania
             gfx.DeviceResetting += (s, e) => PixelFont.Reset();
             IsMouseVisible = false;
             Window.Title = "Kartamania";
-            Exiting += (s, e) => cfg?.Save();
+            Exiting += (s, e) => { MusicPlayer.Stop(); cfg?.Save(); };
         }
 
         // ================================================================== initialisation
@@ -168,6 +168,8 @@ namespace Kartamania
             botFaces = new Texture2D[6];
             for (int i = 0; i < botFaces.Length; i++)
                 botFaces[i] = FaceLoader.MakePlaceholder(GraphicsDevice, KartColors[(i + 1) % KartColors.Length]);
+
+            MusicPlayer.Load();
 
             tracks = TrackLibrary.All().Select(d => new Track(d)).ToArray();
             cfg.Track = M.Wrap(cfg.Track, tracks.Length);
@@ -343,6 +345,7 @@ namespace Kartamania
             camPos = race.Player.Pos + race.Player.Heading * 260f;
             steerSmooth = 0f;
             newRecord = false;
+            MusicPlayer.PlayRandom();
             state = State.Racing;
         }
 
@@ -395,6 +398,7 @@ namespace Kartamania
         {
             if (Press(Keys.Escape) || PadPress(Buttons.Start) || !IsActive)
             {
+                MusicPlayer.Pause();
                 state = State.Paused;
                 return;
             }
@@ -428,14 +432,23 @@ namespace Kartamania
                 newRecord = false;
                 if (p.Finished && !p.Eliminated && p.Lap >= race.TotalLaps)
                     newRecord = cfg.RecordTime(race.Track.Def.Name, race.TotalLaps, p.FinishTime);
+                MusicPlayer.Stop();
                 state = State.Results;
             }
         }
 
         void UpdatePause()
         {
-            if (Press(Keys.Escape) || PadPress(Buttons.Start) || Press(Keys.Enter)) state = State.Racing;
-            if (Press(Keys.M) || PadPress(Buttons.B)) state = State.Menu;
+            if (Press(Keys.Escape) || PadPress(Buttons.Start) || Press(Keys.Enter))
+            {
+                MusicPlayer.Resume();
+                state = State.Racing;
+            }
+            if (Press(Keys.M) || PadPress(Buttons.B))
+            {
+                MusicPlayer.Stop();
+                state = State.Menu;
+            }
             if (Press(Keys.R) || PadPress(Buttons.Y)) StartRace();
         }
 
@@ -651,6 +664,12 @@ namespace Kartamania
             float faceY = panel.Y + panel.Height * 0.62f;
             Face(me.Texture, new Vector2(panel.X + panel.Width * 0.5f, faceY), T(130), 0f, Color.White);
             Text(me.IsPlaceholder ? Loc.Get("PLAYER") : me.Name, panel.X + panel.Width * 0.5f, faceY + T(80), T(4), Color.White, true);
+
+            string musicLine = MusicPlayer.Count > 0
+                ? Loc.Get("MUSIC_COUNT") + MusicPlayer.Count + Loc.Get("MUSIC_RANDOM")
+                : Loc.Get("ADD_MUSIC");
+            Text(musicLine, panel.X + panel.Width * 0.5f, panel.Y + panel.Height - T(96), T(2.5f),
+                 MusicPlayer.Count > 0 ? Color.White * 0.8f : new Color(255, 215, 60), true);
 
             if (!hasPhotos)
             {

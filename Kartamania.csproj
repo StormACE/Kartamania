@@ -25,11 +25,14 @@
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.4.1" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- Les photos du dossier Faces sont copiées à côté de l'exécutable. -->
-    <None Update="Faces\**\*.*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
+    <ItemGroup>
+      <!-- Les photos du dossier Faces sont copiées à côté de l'exécutable. -->
+      <None Update="Faces\**\*.*">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Music\**\*.*">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
 
 </Project>
