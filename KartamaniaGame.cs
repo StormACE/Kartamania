@@ -510,7 +510,7 @@ namespace Kartamania
             {
                 newRecord = false;
                 if (p.Finished && !p.Eliminated && p.Lap >= race.TotalLaps)
-                    newRecord = cfg.RecordTime(race.Track.Def.Name, race.TotalLaps, p.FinishTime);
+                    newRecord = cfg.RecordTime(race.Track.Def.Name, race.TotalLaps, cfg.Difficulty, p.FinishTime);
                 Sfx.Finish(!p.Eliminated && p.Place == 1);
                 Sfx.StopEngine();
                 MusicPlayer.Stop();
@@ -755,8 +755,8 @@ namespace Kartamania
             }
 
             float lx = w * 0.06f;
-            Text("KARTAMANIA", lx, h * 0.12f, T(13), new Color(255, 215, 60));
-            Text(Loc.Get("SUBTITLE"), lx, h * 0.12f + T(13) * 6.5f, T(3), Color.White * 0.85f);
+            Text("KARTAMANIA", lx, h * 0.12f, T(20), new Color(255, 215, 60));
+            Text(Loc.Get("SUBTITLE"), lx, h * 0.12f + T(20) * 6.5f, T(3), Color.White * 0.85f);
 
             int ts = T(4);
             float y = h * 0.34f;
@@ -1210,7 +1210,7 @@ namespace Kartamania
             Color tc = p.Eliminated ? Color.OrangeRed : (won ? new Color(255, 215, 60) : Color.White);
             Text(title, w * 0.5f, h * 0.035f, T(14), tc, true);
 
-            float best = cfg.GetBestTime(race.Track.Def.Name, race.TotalLaps);
+            float best = cfg.GetBestTime(race.Track.Def.Name, race.TotalLaps, cfg.Difficulty);
             string bestLine = Loc.Get("BEST_TIME") + race.TotalLaps + Loc.Get("BEST_LAPS") + (best > 0f ? FormatTime(best) : "--:--.-");
             Text(bestLine, w * 0.5f, h * 0.115f, T(4), new Color(255, 215, 60), true);
             if (newRecord) Text(Loc.Get("NEW_RECORD"), w * 0.5f, h * 0.155f, T(3), new Color(120, 255, 120), true);

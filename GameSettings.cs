@@ -25,18 +25,22 @@ namespace Kartamania
 
         static string FilePath => Path.Combine(AppContext.BaseDirectory, "settings.txt");
 
-        public static string BestKey(string trackName, int laps) => trackName + "|" + laps;
-
-        public float GetBestTime(string trackName, int laps)
+        public static string BestKey(string trackName, int laps, int difficulty)
         {
-            float time;
-            return BestTimes.TryGetValue(BestKey(trackName, laps), out time) ? time : 0f;
+            difficulty = Math.Max(0, Math.Min(2, difficulty));
+            return trackName + "|" + laps + "|" + difficulty;
         }
 
-        public bool RecordTime(string trackName, int laps, float time)
+        public float GetBestTime(string trackName, int laps, int difficulty)
+        {
+            float time;
+            return BestTimes.TryGetValue(BestKey(trackName, laps, difficulty), out time) ? time : 0f;
+        }
+
+        public bool RecordTime(string trackName, int laps, int difficulty, float time)
         {
             if (time <= 0f) return false;
-            string key = BestKey(trackName, laps);
+            string key = BestKey(trackName, laps, difficulty);
             float previous;
             if (BestTimes.TryGetValue(key, out previous) && previous <= time) return false;
             BestTimes[key] = time;
@@ -77,14 +81,26 @@ namespace Kartamania
                             {
                                 string[] parts = val.Split('|');
                                 float best;
-                                if (parts.Length == 3 && parts[0].Length > 0 &&
-                                    float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out best) && best > 0f)
+                                if ((parts.Length == 3 || parts.Length == 4) && parts[0].Length > 0 &&
+                                    float.TryParse(parts[parts.Length - 1], NumberStyles.Float, CultureInfo.InvariantCulture, out best) && best > 0f)
                                 {
                                     string track = parts[0] == "Desert du Sud" ? "Désert du Sud"
                                                  : parts[0] == "Etoile du Nord" ? "Étoile du Nord" : parts[0];
-                                    string bestKey = track + "|" + parts[1];
-                                    float old;
-                                    if (!s.BestTimes.TryGetValue(bestKey, out old) || best < old) s.BestTimes[bestKey] = best;
+                                    int[] diffs;
+                                    if (parts.Length == 4)
+                                    {
+                                        int d;
+                                        if (!int.TryParse(parts[2], out d) || d < 0 || d > 2) break;
+                                        diffs = new[] { d };
+                                    }
+                                    else diffs = new[] { 0, 1, 2 };
+
+                                    foreach (int d in diffs)
+                                    {
+                                        string bestKey = track + "|" + parts[1] + "|" + d;
+                                        float old;
+                                        if (!s.BestTimes.TryGetValue(bestKey, out old) || best < old) s.BestTimes[bestKey] = best;
+                                    }
                                 }
                             }
                             break;
