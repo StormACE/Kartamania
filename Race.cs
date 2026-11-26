@@ -269,7 +269,7 @@ namespace Kartamania
             }
 
             Vector2 desired = M.Dir(k.Angle) * k.Speed;
-            k.Vel = Vector2.Lerp(k.Vel, desired, M.Clamp(8f * dt, 0f, 1f));   // un peu de dérapage
+            k.Vel = Vector2.Lerp(k.Vel, desired, M.Clamp(8f * Track.Def.Grip * dt, 0f, 1f));   // un peu de dérapage
             Vector2 prev = k.Pos;
             k.PrevPos = prev;
             k.Pos += k.Vel * dt;

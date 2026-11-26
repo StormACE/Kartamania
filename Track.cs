@@ -35,6 +35,7 @@ namespace Kartamania
         public Vector2[] Points;       // points de contrôle (spline Catmull-Rom fermée)
         public float Scale = 1.35f;    // facteur appliqué aux points
         public float Width = 250f;     // largeur de la route
+        public float Grip = 1f;        // 1 = adhérence normale, < 1 = route glissante
         public Color Grass, Rough, Road;
         public TrackTheme Theme = TrackTheme.Normal;
         public float[] BoxRows;        // positions (0..1) des rangées de boîtes d'armes
@@ -249,6 +250,7 @@ namespace Kartamania
         {
             Name = "Montagnes du québec",
             Width = 240f,
+            Grip = 0.25f,
             Theme = TrackTheme.Winter,
             Grass = new Color(205, 225, 238), Rough = new Color(170, 196, 214), Road = new Color(66, 72, 92),
             Points = new[] { V(-1500, -700), V(-500, -950), V(500, -550), V(1500, -950), V(2200, -250), V(1650, 550), V(600, 400), V(-100, 1000), V(-1100, 900), V(-1900, 350), V(-2150, -300) },
