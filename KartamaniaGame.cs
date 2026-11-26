@@ -240,10 +240,19 @@ namespace Kartamania
             return 0;
         }
 
+        int StickEdge(float value, float prev)
+        {
+            const float threshold = 0.55f;
+            int sign = value > threshold ? 1 : (value < -threshold ? -1 : 0);
+            int prevSign = prev > threshold ? 1 : (prev < -threshold ? -1 : 0);
+            return sign != 0 && sign != prevSign ? sign : 0;
+        }
+
         void UpdateMenu(float dt)
         {
             int stickY = StickStep(pad.ThumbSticks.Left.Y, ppad.ThumbSticks.Left.Y, ref stickRepeatY, dt);
             int stickX = StickStep(pad.ThumbSticks.Left.X, ppad.ThumbSticks.Left.X, ref stickRepeatX, dt);
+            int stickXEdge = StickEdge(pad.ThumbSticks.Left.X, ppad.ThumbSticks.Left.X);
 
             if (Press(Keys.Up) || PadPress(Buttons.DPadUp) || stickY > 0) sel = M.Wrap(sel - 1, Rows.Length);
             if (Press(Keys.Down) || PadPress(Buttons.DPadDown) || stickY < 0) sel = M.Wrap(sel + 1, Rows.Length);
@@ -251,6 +260,9 @@ namespace Kartamania
             int dir = 0;
             if (Press(Keys.Left) || PadPress(Buttons.DPadLeft) || stickX < 0) dir = -1;
             if (Press(Keys.Right) || PadPress(Buttons.DPadRight) || stickX > 0) dir = 1;
+            int dirEdge = 0;
+            if (Press(Keys.Left) || PadPress(Buttons.DPadLeft) || stickXEdge < 0) dirEdge = -1;
+            if (Press(Keys.Right) || PadPress(Buttons.DPadRight) || stickXEdge > 0) dirEdge = 1;
             bool enter = Press(Keys.Enter) || Press(Keys.Space) || PadPress(Buttons.A);
 
             switch (Rows[sel])
@@ -286,10 +298,10 @@ namespace Kartamania
                     }
                     break;
                 case Row.Display:
-                    if (dir != 0 || enter) { cfg.Fullscreen = !cfg.Fullscreen; ApplyGraphics(); }
+                    if (dirEdge != 0 || enter) { cfg.Fullscreen = !cfg.Fullscreen; ApplyGraphics(); }
                     break;
                 case Row.VSync:
-                    if (dir != 0 || enter) { cfg.VSync = !cfg.VSync; ApplyGraphics(); }
+                    if (dirEdge != 0 || enter) { cfg.VSync = !cfg.VSync; ApplyGraphics(); }
                     break;
                 case Row.Fps:
                     if (dir != 0)
@@ -299,7 +311,7 @@ namespace Kartamania
                     }
                     break;
                 case Row.Language:
-                    if (dir != 0 || enter)
+                    if (dirEdge != 0 || enter)
                     {
                         cfg.Language = M.Wrap(cfg.Language + 1, 2);
                         Loc.Set(cfg.Language);
