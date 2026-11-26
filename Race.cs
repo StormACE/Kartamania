@@ -320,7 +320,21 @@ namespace Kartamania
             Vector2 off = k.Pos - Track.Center[idx];
             float dist = off.Length();
 
-            if (junction && !k.OutsideCourse && Track.LoopDistance(old, idx) > Track.N / 8) PenalizeShortcut(k);
+            if (junction && Track.LoopDistance(old, idx) > Track.N / 8)
+            {
+                if (k.WrongBranch) k.WrongBranch = false;
+                else if (!k.OutsideCourse)
+                {
+                    k.WrongBranch = true;
+                    k.WrongBranchPos = k.Pos;
+                }
+            }
+            if (k.WrongBranch && !k.OutsideCourse &&
+                (k.Pos - k.WrongBranchPos).Length() > Track.HalfWidth + Track.Shoulder)
+            {
+                k.WrongBranch = false;
+                PenalizeShortcut(k);
+            }
 
             k.OffRoad = dist > Track.HalfWidth && !junction;
 
@@ -344,6 +358,7 @@ namespace Kartamania
                     {
                         k.Lap++;
                         k.OutsideCourse = false;
+                        k.WrongBranch = false;
                         if (k.IsPlayer) Sfx.Lap();
                     }
                     k.LastGateIndex = gate.Index;
@@ -359,6 +374,7 @@ namespace Kartamania
         void PenalizeShortcut(Kart k)
         {
             k.OutsideCourse = true;
+            k.WrongBranch = false;
             if (k.Finished || k.Eliminated) return;
 
             if (k.Lap > -1) k.Lap--;
@@ -817,6 +833,7 @@ namespace Kartamania
             k.StuckTimer = 0f;
             k.OffRoad = false;
             k.OutsideCourse = false;
+            k.WrongBranch = false;
             UpdateProgress(k);
             Burst(k.Pos, Color.Cyan, 12, 200f);
             Sfx.Respawn(k.IsPlayer);
