@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -24,6 +25,19 @@ namespace Kartamania
             new Color(220, 50, 50), new Color(60, 110, 230), new Color(60, 180, 80), new Color(240, 200, 40),
             new Color(150, 80, 200), new Color(240, 130, 30), new Color(40, 190, 200), new Color(235, 110, 170),
         };
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        static extern int SetCurrentProcessExplicitAppUserModelID(string appId);
+
+        [DllImport("SDL2.dll", CallingConvention = CallingConvention.Cdecl)]
+        static extern IntPtr SDL_CreateRGBSurfaceFrom(IntPtr pixels, int width, int height, int depth, int pitch,
+                                                      uint rmask, uint gmask, uint bmask, uint amask);
+
+        [DllImport("SDL2.dll", CallingConvention = CallingConvention.Cdecl)]
+        static extern void SDL_SetWindowIcon(IntPtr window, IntPtr icon);
+
+        [DllImport("SDL2.dll", CallingConvention = CallingConvention.Cdecl)]
+        static extern void SDL_FreeSurface(IntPtr surface);
 
         readonly GraphicsDeviceManager gfx;
         SpriteBatch sb;
@@ -70,6 +84,7 @@ namespace Kartamania
 
         public KartamaniaGame()
         {
+            SetCurrentProcessExplicitAppUserModelID("Kartamania.Game");
             gfx = new GraphicsDeviceManager(this);
             // Plein écran "sans bordure" au lieu du mode exclusif : évite l'écran noir
             // et la fenêtre qui se minimise toute seule sur les écrans 4K / haute densité.
@@ -82,6 +97,12 @@ namespace Kartamania
         }
 
         // ================================================================== initialisation
+
+        protected override void BeginRun()
+        {
+            base.BeginRun();
+            SetWindowIcon();
+        }
 
         protected override void Initialize()
         {
@@ -195,6 +216,7 @@ namespace Kartamania
         protected override void LoadContent()
         {
             sb = new SpriteBatch(GraphicsDevice);
+            SetWindowIcon();
 
             pixel = new Texture2D(GraphicsDevice, 1, 1);
             pixel.SetData(new[] { Color.White });
@@ -225,6 +247,31 @@ namespace Kartamania
             tracks = TrackLibrary.All().Select(d => new Track(d)).ToArray();
             cfg.Track = M.Wrap(cfg.Track, tracks.Length);
             cfg.Player = M.Wrap(cfg.Player, faces.Count);
+        }
+
+        void SetWindowIcon()
+        {
+            string path = Path.Combine(AppContext.BaseDirectory, "Images", "kart.rgba");
+            if (!File.Exists(path)) return;
+            byte[] pixels = File.ReadAllBytes(path);
+            const int size = 256;
+            if (pixels.Length != size * size * 4) return;
+
+            GCHandle pin = GCHandle.Alloc(pixels, GCHandleType.Pinned);
+            try
+            {
+                IntPtr surface = SDL_CreateRGBSurfaceFrom(pin.AddrOfPinnedObject(), size, size, 32, size * 4,
+                                                          0x000000FFu, 0x0000FF00u, 0x00FF0000u, 0xFF000000u);
+                if (surface != IntPtr.Zero)
+                {
+                    SDL_SetWindowIcon(Window.Handle, surface);
+                    SDL_FreeSurface(surface);
+                }
+            }
+            finally
+            {
+                pin.Free();
+            }
         }
 
         Texture2D MakeDisc(int size)
@@ -819,6 +866,8 @@ namespace Kartamania
                 Text(line, lx, y + i * lineH, ts, on ? new Color(255, 215, 60) : Color.White * 0.85f);
             }
 
+            Text(Loc.Get("MUSIC_CREDIT"), T(12f), h - T(24f) * 2f - PixelFont.LineHeight(T(2)) - T(4f),
+                 T(2), Color.White * 0.6f);
             HintPanel(MenuHint(), w * 0.5f, h - T(24) * 2f - T(12), T(3), Color.White);
 
             // Panneau de droite : aperçu de la piste + visages.
@@ -1243,7 +1292,7 @@ namespace Kartamania
             if (finishAge < 0f || finishAge > 3.2f) return;
 
             bool won = p.Place == 1;
-            string title = won ? Loc.Get("RESULT_WIN") : Loc.Get("RESULT_POSITION") + Loc.Ordinal(p.Place);
+            string title = won ? Loc.Get("RESULT_WIN") : Loc.ResultPlace(p.Place);
             float finishFade = M.Clamp(Math.Min(finishAge * 4f, (3.2f - finishAge) * 2f), 0f, 1f);
             Color color = (won ? new Color(255, 215, 60) : Color.White) * finishFade;
 
@@ -1260,7 +1309,7 @@ namespace Kartamania
             bool won = !p.Eliminated && p.Place == 1;
             string title = p.Eliminated ? Loc.Get("RESULT_ELIMINATED")
                           : won ? Loc.Get("RESULT_WIN")
-                          : Loc.Get("RESULT_POSITION") + Loc.Ordinal(p.Place);
+                          : Loc.ResultPlace(p.Place);
             Color tc = p.Eliminated ? Color.OrangeRed : (won ? new Color(255, 215, 60) : Color.White);
             Text(title, w * 0.5f, h * 0.035f, T(14), tc, true);
 

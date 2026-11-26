@@ -49,6 +49,7 @@ namespace Kartamania
             { "ADD_PHOTOS", new[] { "AJOUTE TES PHOTOS DANS LE DOSSIER FACES", "ADD YOUR PHOTOS TO THE FACES FOLDER" } },
             { "PHOTO_FORMAT", new[] { "(PNG OU JPG, UN FICHIER PAR PERSONNE)", "(PNG OR JPG, ONE FILE PER PERSON)" } },
             { "ADD_MUSIC", new[] { "AJOUTE TA MUSIQUE DANS LE DOSSIER MUSIC (WAV/OGG)", "ADD YOUR MUSIC TO THE MUSIC FOLDER (WAV/OGG)" } },
+            { "MUSIC_CREDIT", new[] { "MUSIQUE INCLUSE EST COPYRIGHT PAR MARTIN LAFLAMME", "INCLUDED MUSIC IS COPYRIGHTED BY MARTIN LAFLAMME" } },
             { "MUSIC_COUNT", new[] { "MUSIQUE: ", "MUSIC: " } },
             { "MUSIC_RANDOM", new[] { " FICHIER(S) - UN AU HASARD PAR COURSE", " FILE(S) - ONE AT RANDOM PER RACE" } },
             { "FACES_UNREADABLE", new[] { "DOSSIER FACES ILLISIBLE: ", "FACES FOLDER UNREADABLE: " } },
@@ -69,7 +70,7 @@ namespace Kartamania
             { "RESULT_ELIMINATED", new[] { "ÉLIMINÉ !", "ELIMINATED!" } },
             { "RESULT_VICTORY", new[] { "VICTOIRE!", "VICTORY!" } },
             { "RESULT_WIN", new[] { "GAGNÉ!", "WINNER!" } },
-            { "RESULT_POSITION", new[] { "PLACE ", "POSITION " } },
+            { "RESULT_POSITION", new[] { "POSITION ", "POSITION " } },
             { "RESULT_FINISHED", new[] { "COURSE TERMINÉE", "RACE FINISHED" } },
             { "BEST_TIME", new[] { "MEILLEUR TEMPS ", "BEST TIME " } },
             { "BEST_LAPS", new[] { " TOURS : ", " LAPS: " } },
@@ -121,6 +122,12 @@ namespace Kartamania
             if (n % 100 >= 11 && n % 100 <= 13) return n + "TH";
             int last = n % 10;
             return n + (last == 1 ? "ST" : last == 2 ? "ND" : last == 3 ? "RD" : "TH");
+        }
+
+        public static string ResultPlace(int place)
+        {
+            if (language == GameLanguage.French) return Ordinal(place).ToLowerInvariant() + " place";
+            return Get("RESULT_POSITION") + Ordinal(place);
         }
     }
 }
