@@ -862,7 +862,7 @@ namespace Kartamania
             }
         }
 
-        void DrawChalet(Vector2 p, float scale, Vector2 up, Vector2 right, float rot, int seed)
+        void DrawChalet(Vector2 p, float scale, Vector2 up, Vector2 right, float rot, int seed, bool snow = false)
         {
             Vector2 O(float x, float y) => p + right * (x * scale) + up * (y * scale);
             int variant = Math.Abs(seed) % 3;
@@ -890,6 +890,19 @@ namespace Kartamania
             RectC(O(w * 0.28f, ht * 0.62f), new Vector2(30f, 28f) * scale, rot, new Color(255, 214, 130));
             RectC(O(-w * 0.28f, ht * 0.62f), new Vector2(34f, 4f) * scale, rot, woodDark);
             RectC(O(w * 0.28f, ht * 0.62f), new Vector2(34f, 4f) * scale, rot, woodDark);
+
+            if (snow)
+            {
+                Color snowWhite = new Color(240, 248, 255);
+                RectC(O(-w * 0.28f, ht + 43f), new Vector2(w * 0.74f, 8f) * scale, rot - 0.62f, snowWhite);
+                RectC(O(w * 0.28f, ht + 43f), new Vector2(w * 0.74f, 8f) * scale, rot + 0.62f, snowWhite);
+                RectC(O(0f, ht + 74f), new Vector2(26f, 8f) * scale, rot, snowWhite);
+                RectC(O(w * 0.22f, ht + 100f), new Vector2(20f, 6f) * scale, rot, snowWhite);
+                Disc(O(-w * 0.42f, ht + 8f), 12f * scale, snowWhite);
+                Disc(O(w * 0.42f, ht + 12f), 10f * scale, snowWhite);
+                Disc(O(-w * 0.28f, ht * 0.62f + 20f), 13f * scale, snowWhite);
+                Disc(O(w * 0.28f, ht * 0.62f + 20f), 13f * scale, snowWhite);
+            }
         }
 
         void DrawBuilding(Vector2 p, float scale, int seed, Vector2 up, Vector2 right, float rot)
@@ -1221,8 +1234,39 @@ namespace Kartamania
 
 
             float Rnd(int s, int m) => (Math.Abs(s * 9301 + 49297) % m) / (float)m;
-            var scenerySpots = new List<(Vector2 Pos, float Radius)>();
-            int treeStep = def.Forest ? 4 : (desert ? 7 : (def.DenseTrees ? 5 : 8));
+            var chaletSpots = new List<(Vector2 Pos, float Radius, float Scale, int Seed)>();
+            if (def.Forest || def.DenseTrees)
+            {
+                int chaletStep = def.Forest ? 40 : 80;
+                for (int i = 0; i < n; i += chaletStep)
+                {
+                    for (int side = -1; side <= 1; side += 2)
+                    {
+                        int seed = i * 17 + (side + 1) * 11 + 5;
+                        float along = (Rnd(seed + 1, 211) - 0.5f) * 170f;
+                        float lateral = def.Forest
+                            ? wall + 340f + Rnd(seed + 2, 271) * 140f
+                            : wall + 320f + Rnd(seed + 2, 271) * 120f;
+                        Vector2 p = tr.Center[i] + tr.Tangent[i] * along + tr.Normal[i] * (side * lateral);
+                        if (Vector2.DistanceSquared(p, camPos) > cull2) continue;
+                        int nearTrack = tr.NearestAny(p);
+                        if ((p - tr.Center[nearTrack]).Length() < wall + 150f) continue;
+                        float scale = def.Forest
+                            ? 0.65f + Rnd(seed + 3, 7) * 0.20f
+                            : 0.70f + Rnd(seed + 3, 7) * 0.18f;
+                        float clear = 105f * scale;
+                        bool overlaps = false;
+                        foreach (var c in chaletSpots)
+                        {
+                            if ((p - c.Pos).Length() < c.Radius + clear * 1.6f) { overlaps = true; break; }
+                        }
+                        if (overlaps) continue;
+                        chaletSpots.Add((p, clear, scale, seed));
+                    }
+                }
+            }
+
+            int treeStep = def.Forest ? 2 : (desert ? 7 : (def.DenseTrees ? 5 : 8));
             int treeLayers = def.Forest || desert || def.DenseTrees ? 2 : 1;
             for (int i = 0; i < n; i += treeStep)
             {
@@ -1235,8 +1279,8 @@ namespace Kartamania
                         Vector2 p;
                         if (def.Forest)
                         {
-                            float along = (Rnd(seed, 211) - 0.5f) * 190f;
-                            float lateral = wall + 70f + Rnd(seed + 31, 271) * 260f;
+                            float along = (Rnd(seed, 211) - 0.5f) * 260f;
+                            float lateral = wall + 60f + Rnd(seed + 31 + layer * 47, 271) * 700f;
                             p = tr.Center[i] + tr.Tangent[i] * along + tr.Normal[i] * (side * lateral);
                         }
                         else if (desert)
@@ -1265,47 +1309,29 @@ namespace Kartamania
                         }
                         float scale = desert
                             ? (0.72f + Rnd(seed + 5, 7) * 0.20f) * (layer == 1 ? 0.88f : 1f)
-                            : (0.85f + ((seed * 11) % 9) * 0.045f) * (def.DenseTrees && layer == 1 ? 0.88f : 1f);
+                            : (0.85f + ((seed * 11) % 9) * 0.045f) * ((def.DenseTrees && layer == 1) ? 0.88f : (def.Forest && layer == 1 ? 0.92f : 1f));
+                        if (def.Forest || def.DenseTrees)
+                        {
+                            float treeRadius = 78f * scale;
+                            bool nearChalet = false;
+                            foreach (var c in chaletSpots)
+                            {
+                                if ((p - c.Pos).Length() < c.Radius + treeRadius + 30f) { nearChalet = true; break; }
+                            }
+                            if (nearChalet) continue;
+                        }
                         if (city)
                         {
                             DrawBuilding(p, scale, seed, treeUp, treeRight, treeRot);
                             if (i % 32 == 0) DrawLamp(p - tr.Normal[i] * (side * 70f), scale, treeUp, treeRight, treeRot);
                         }
-                        else
-                        {
-                            DrawTree(p, scale, def.Theme, treeUp, treeRight, treeRot, seed + layer * 17);
-                            if (def.Forest) scenerySpots.Add((p, 78f * scale));
-                        }
+                        else DrawTree(p, scale, def.Theme, treeUp, treeRight, treeRot, seed + layer * 17);
                     }
                 }
             }
 
-            if (def.Forest)
-            {
-                for (int i = 0; i < n; i += 40)
-                {
-                    for (int side = -1; side <= 1; side += 2)
-                    {
-                        int seed = i * 17 + (side + 1) * 11 + 5;
-                        float along = (Rnd(seed + 1, 211) - 0.5f) * 170f;
-                        float lateral = wall + 440f + Rnd(seed + 2, 271) * 180f;
-                        Vector2 p = tr.Center[i] + tr.Tangent[i] * along + tr.Normal[i] * (side * lateral);
-                        if (Vector2.DistanceSquared(p, camPos) > cull2) continue;
-                        int nearTrack = tr.NearestAny(p);
-                        if ((p - tr.Center[nearTrack]).Length() < wall + 150f) continue;
-                        float scale = 0.65f + Rnd(seed + 3, 7) * 0.20f;
-                        float clear = 105f * scale;
-                        bool blocked = false;
-                        foreach (var spot in scenerySpots)
-                        {
-                            if ((p - spot.Pos).Length() < spot.Radius + clear) { blocked = true; break; }
-                        }
-                        if (blocked) continue;
-                        DrawChalet(p, scale, treeUp, treeRight, treeRot, seed);
-                        scenerySpots.Add((p, clear));
-                    }
-                }
-            }
+            foreach (var c in chaletSpots)
+                DrawChalet(c.Pos, c.Scale, treeUp, treeRight, treeRot, c.Seed, def.DenseTrees);
 
             // Obstacles (cônes).
             foreach (Vector2 o in tr.ObstaclePos)
