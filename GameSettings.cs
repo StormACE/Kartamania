@@ -20,7 +20,7 @@ namespace Kartamania
         }
         public bool VSync = false;
         public int FpsIndex = 1;            // 120 FPS par défaut
-        public int Track, Player, Difficulty = 1, Laps = 3, RacerCount = 6, Language;
+        public int Track, Player, Difficulty = 1, Laps = 3, RacerCount = 6, Language, KartColor;
         public readonly Dictionary<string, float> BestTimes = new Dictionary<string, float>();
 
         static string FilePath => Path.Combine(AppContext.BaseDirectory, "settings.txt");
@@ -73,6 +73,7 @@ namespace Kartamania
                         case "fps": if (isInt) s.FpsIndex = Math.Max(0, Math.Min(FpsCaps.Length - 1, n)); break;
                         case "track": if (isInt) s.Track = Math.Max(0, n); break;
                         case "player": if (isInt) s.Player = Math.Max(0, n); break;
+                        case "kartcolor": if (isInt) s.KartColor = Math.Max(0, Math.Min(9, n)); break;
                         case "difficulty": if (isInt) s.Difficulty = Math.Max(0, Math.Min(2, n)); break;
                         case "laps": if (isInt) s.Laps = Math.Max(1, Math.Min(20, n)); break;
                         case "pilots": if (isInt) s.RacerCount = Math.Max(1, Math.Min(10, n)); break;
@@ -120,7 +121,7 @@ namespace Kartamania
                     "width=" + Width, "height=" + Height,
                     "display=" + DisplayMode, "fullscreen=" + (Fullscreen ? 1 : 0), "borderless=" + (Borderless ? 1 : 0),
                     "vsync=" + (VSync ? 1 : 0), "fps=" + FpsIndex,
-                    "track=" + Track, "player=" + Player, "difficulty=" + Difficulty, "laps=" + Laps,
+                    "track=" + Track, "player=" + Player, "kartcolor=" + KartColor, "difficulty=" + Difficulty, "laps=" + Laps,
                     "pilots=" + RacerCount, "language=" + Language,
                 };
                 foreach (var entry in BestTimes)

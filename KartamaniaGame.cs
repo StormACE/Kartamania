@@ -14,7 +14,7 @@ namespace Kartamania
     public sealed class KartamaniaGame : Game
     {
         enum State { Menu, Racing, Paused, Results }
-        enum Row { Play, Track, Player, Difficulty, Laps, Pilots, Resolution, Display, VSync, Fps, Language, Quit }
+        enum Row { Play, Track, Player, KartColor, Difficulty, Laps, Pilots, Resolution, Display, VSync, Fps, Language, Quit }
 
         static readonly Row[] Rows = (Row[])Enum.GetValues(typeof(Row));
         static readonly float[] DifficultyStrength = { 0.88f, 1.16f, 1.33f };
@@ -24,6 +24,7 @@ namespace Kartamania
         {
             new Color(220, 50, 50), new Color(60, 110, 230), new Color(60, 180, 80), new Color(240, 200, 40),
             new Color(150, 80, 200), new Color(240, 130, 30), new Color(40, 190, 200), new Color(235, 110, 170),
+            new Color(235, 235, 240), new Color(150, 160, 175),
         };
 
         [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
@@ -247,6 +248,8 @@ namespace Kartamania
             tracks = TrackLibrary.All().Select(d => new Track(d)).ToArray();
             cfg.Track = M.Wrap(cfg.Track, tracks.Length);
             cfg.Player = M.Wrap(cfg.Player, faces.Count);
+            cfg.KartColor = M.Wrap(cfg.KartColor, KartColors.Length);
+            UpdatePlayerPlaceholder();
         }
 
         void SetWindowIcon()
@@ -316,6 +319,16 @@ namespace Kartamania
             var t = new Texture2D(GraphicsDevice, size, size);
             t.SetData(data);
             return t;
+        }
+
+        void UpdatePlayerPlaceholder()
+        {
+            if (hasPhotos) return;
+            FaceInfo me = faces[cfg.Player];
+            if (me == null || !me.IsPlaceholder) return;
+            Texture2D old = me.Texture;
+            me.Texture = FaceLoader.MakePlaceholder(GraphicsDevice, KartColors[cfg.KartColor]);
+            if (old != null) old.Dispose();
         }
 
         // ================================================================== mise à jour
@@ -402,6 +415,14 @@ namespace Kartamania
                     if (dir != 0) cfg.Player = M.Wrap(cfg.Player + dir, faces.Count);
                     else if (enter) StartRace();
                     break;
+                case Row.KartColor:
+                    if (dir != 0)
+                    {
+                        cfg.KartColor = M.Wrap(cfg.KartColor + dir, KartColors.Length);
+                        UpdatePlayerPlaceholder();
+                    }
+                    else if (enter) StartRace();
+                    break;
                 case Row.Difficulty:
                     if (dir != 0) cfg.Difficulty = M.Wrap(cfg.Difficulty + dir, DifficultyStrength.Length);
                     else if (enter) StartRace();
@@ -458,12 +479,19 @@ namespace Kartamania
             cfg.Save();
             var racers = new List<RacerInfo>();
             FaceInfo me = faces[cfg.Player];
-            racers.Add(new RacerInfo { Name = me.IsPlaceholder ? Loc.Get("PLAYER") : me.Name, Face = me.Texture, Color = KartColors[0], IsPlayer = true });
+            int playerColor = M.Wrap(cfg.KartColor, KartColors.Length);
+            racers.Add(new RacerInfo { Name = me.IsPlaceholder ? Loc.Get("PLAYER") : me.Name, Face = me.Texture, Color = KartColors[playerColor], IsPlayer = true });
+
+            int colorIdx = 0;
+            Color NextColor()
+            {
+                int offset = 1 + colorIdx++ % (KartColors.Length - 1);
+                return KartColors[(playerColor + offset) % KartColors.Length];
+            }
 
             var others = faces.Where(f => f != me && !f.IsPlaceholder).OrderBy(f => rng.Next()).Take(cfg.RacerCount - 1).ToList();
-            int colorIdx = 1;
             foreach (FaceInfo f in others)
-                racers.Add(new RacerInfo { Name = f.Name, Face = f.Texture, Color = KartColors[colorIdx++ % KartColors.Length] });
+                racers.Add(new RacerInfo { Name = f.Name, Face = f.Texture, Color = NextColor() });
 
             int bot = 0;
             while (racers.Count < cfg.RacerCount)
@@ -472,7 +500,7 @@ namespace Kartamania
                 {
                     Name = Loc.Get("ROBOT") + " " + (bot + 1),
                     Face = botFaces[bot % botFaces.Length],
-                    Color = KartColors[colorIdx++ % KartColors.Length],
+                    Color = NextColor(),
                 });
                 bot++;
             }
@@ -813,6 +841,7 @@ namespace Kartamania
                 case Row.Play: return Loc.Get("ROW_PLAY");
                 case Row.Track: return Loc.Get("LABEL_TRACK") + ": < " + Loc.TrackName(tracks[cfg.Track].Def.Name) + " >";
                 case Row.Player: return Loc.Get("LABEL_PLAYER") + ": < " + (faces[cfg.Player].IsPlaceholder ? Loc.Get("PLAYER") : faces[cfg.Player].Name) + " >";
+                case Row.KartColor: return Loc.Get("LABEL_KART_COLOR") + ": < " + Loc.Get("COLOR_" + cfg.KartColor) + " >";
                 case Row.Difficulty: return Loc.Get("LABEL_DIFFICULTY") + ": < " + Loc.Get("DIFFICULTY_" + cfg.Difficulty) + " >";
                 case Row.Laps: return Loc.Get("LABEL_LAPS") + ": < " + cfg.Laps + " >";
                 case Row.Pilots: return Loc.Get("LABEL_PILOTS") + ": < " + cfg.RacerCount + " >";
