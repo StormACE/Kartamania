@@ -15,7 +15,7 @@ namespace Kartamania
         enum Row { Play, Track, Player, Difficulty, Laps, Pilots, Resolution, Display, VSync, Fps, Language, Quit }
 
         static readonly Row[] Rows = (Row[])Enum.GetValues(typeof(Row));
-        static readonly float[] DifficultyStrength = { 0.80f, 1.08f, 1.25f };
+        static readonly float[] DifficultyStrength = { 0.88f, 1.16f, 1.33f };
         static readonly Color[] KartColors =
         {
             new Color(220, 50, 50), new Color(60, 110, 230), new Color(60, 180, 80), new Color(240, 200, 40),
