@@ -155,6 +155,7 @@ namespace Kartamania
                 case ItemType.Mine: Play(mine); break;
                 case ItemType.Boost: Play(boost); break;
                 case ItemType.Shield: Play(shield); break;
+                case ItemType.Heart: Play(pickup); break;
             }
         }
 

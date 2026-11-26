@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace Kartamania
 {
-    public enum ItemType { None, Missile, Mine, Boost, Shield }
+    public enum ItemType { None, Missile, Mine, Boost, Shield, Heart }
 
     /// <summary>Infos nécessaires pour inscrire un pilote à une course.</summary>
     public sealed class RacerInfo

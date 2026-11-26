@@ -56,6 +56,8 @@ namespace Kartamania
             { "HUD_LAP", new[] { "TOUR ", "LAP " } },
             { "HUD_HEALTH", new[] { "POINTS DE VIE", "HEALTH" } },
             { "ITEM_SHIELD", new[] { "BOUCLIER", "SHIELD" } },
+            { "ITEM_HEART", new[] { "CŒUR", "HEART" } },
+            { "MSG_HEAL", new[] { " +1 POINT DE VIE", " +1 HEALTH" } },
             { "WAITING", new[] { "EN ATTENTE DES AUTRES PILOTES : ", "WAITING FOR THE OTHER DRIVERS: " } },
             { "RACING", new[] { " EN COURSE", " STILL RACING" } },
             { "END_RACE_PAD", new[] { "A: TERMINER LA COURSE", "A: END THE RACE" } },

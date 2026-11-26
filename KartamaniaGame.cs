@@ -26,7 +26,7 @@ namespace Kartamania
 
         readonly GraphicsDeviceManager gfx;
         SpriteBatch sb;
-        Texture2D pixel, disc;
+        Texture2D pixel, disc, heart;
 
         GameSettings cfg;
         readonly List<Point> resolutions = new List<Point>();
@@ -199,6 +199,7 @@ namespace Kartamania
             pixel.SetData(new[] { Color.White });
 
             disc = MakeDisc(128);
+            heart = MakeHeart(128);
 
             faces = FaceLoader.LoadAll(GraphicsDevice, out faceWarning);
             hasPhotos = faces.Count > 0;
@@ -229,6 +230,34 @@ namespace Kartamania
                     float a = M.Clamp(r - (float)Math.Sqrt(dx * dx + dy * dy), 0f, 1f);
                     data[y * size + x] = Color.White * a;
                 }
+            var t = new Texture2D(GraphicsDevice, size, size);
+            t.SetData(data);
+            return t;
+        }
+
+        Texture2D MakeHeart(int size)
+        {
+            var data = new Color[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    int inside = 0;
+                    for (int sy = 0; sy < 2; sy++)
+                    {
+                        for (int sx = 0; sx < 2; sx++)
+                        {
+                            float px = (x + (sx + 0.5f) / 2f) / size;
+                            float py = (y + (sy + 0.5f) / 2f) / size;
+                            float nx = (px * 2f - 1f) * 1.2f;
+                            float ny = 1.2f - py * 2.4f;
+                            float v = nx * nx + ny * ny - 1f;
+                            if (v * v * v - nx * nx * ny * ny * ny <= 0f) inside++;
+                        }
+                    }
+                    data[y * size + x] = Color.White * (inside / 4f);
+                }
+            }
             var t = new Texture2D(GraphicsDevice, size, size);
             t.SetData(data);
             return t;
@@ -555,6 +584,9 @@ namespace Kartamania
 
         void Disc(Vector2 center, float diameter, Color c) =>
             sb.Draw(disc, center, null, c, 0f, new Vector2(64f, 64f), diameter / 128f, SpriteEffects.None, 0f);
+
+        void Heart(Vector2 center, float diameter, Color c) =>
+            sb.Draw(heart, center, null, c, 0f, new Vector2(64f, 64f), diameter / 128f, SpriteEffects.None, 0f);
 
         void DrawTree(Vector2 p, float scale, TrackTheme theme, Vector2 up, Vector2 right, float rot)
         {
@@ -1066,6 +1098,9 @@ namespace Kartamania
                     case ItemType.Mine: Disc(ic, 54f * u, Color.Black); Disc(ic, 22f * u, Color.Red); name = "MINE"; break;
                     case ItemType.Boost: Disc(ic, 54f * u, Color.Orange); Disc(ic, 28f * u, Color.Yellow); name = "TURBO"; break;
                     case ItemType.Shield: Disc(ic, 54f * u, Color.Cyan * 0.8f); Disc(ic, 34f * u, Color.White * 0.5f); name = Loc.Get("ITEM_SHIELD"); break;
+                    case ItemType.Heart:
+                        Heart(ic, 78f * u, new Color(255, 70, 80));
+                        name = Loc.Get("ITEM_HEART"); break;
                 }
                 if (name.Length > 0) Text(name, cx, m + bs * 0.78f, T(2.5f), Color.White, true);
                 else Text("-", cx, m + bs * 0.38f, T(6), Color.White * 0.4f, true);

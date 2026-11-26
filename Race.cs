@@ -481,6 +481,7 @@ namespace Kartamania
                     case ItemType.Shield: use = true; break;
                     case ItemType.Missile: use = FindTarget(k, 0.95f - 0.2f * aiAggression) != null && rng.NextDouble() < 0.02 + 0.08 * aiAggression; break;
                     case ItemType.Mine: use = SomeoneBehind(k); break;
+                    case ItemType.Heart: use = k.Hp < Kart.MaxHp; break;
                 }
                 if (use)
                 {
@@ -569,18 +570,41 @@ namespace Kartamania
                 case ItemType.Shield:
                     k.ShieldTimer = 8f;
                     break;
+                case ItemType.Heart:
+                    if (k.Hp < Kart.MaxHp)
+                    {
+                        k.Hp++;
+                        Burst(k.Pos, new Color(120, 255, 120), 14, 240f);
+                        Say(k.Name + Loc.Get("MSG_HEAL"));
+                    }
+                    break;
                 default:
                     return;
             }
             k.Item = ItemType.None;
         }
 
-        ItemType RollItem()
+        ItemType RollItem(Kart k)
         {
             int r = rng.Next(100);
-            if (r < 25) return ItemType.Missile;
-            if (r < 45) return ItemType.Mine;
-            if (r < 80) return ItemType.Boost;
+            if (k.Hp >= Kart.MaxHp)
+            {
+                if (r < 25) return ItemType.Missile;
+                if (r < 45) return ItemType.Mine;
+                if (r < 80) return ItemType.Boost;
+                return ItemType.Shield;
+            }
+
+            int heartChance = k.Hp <= 1 ? 35 : 15;
+            if (r < heartChance) return ItemType.Heart;
+            r -= heartChance;
+            int remaining = 100 - heartChance;
+            int missile = remaining * 25 / 100;
+            int mine = remaining * 20 / 100;
+            int boost = remaining * 35 / 100;
+            if (r < missile) return ItemType.Missile;
+            if (r < missile + mine) return ItemType.Mine;
+            if (r < missile + mine + boost) return ItemType.Boost;
             return ItemType.Shield;
         }
 
@@ -594,7 +618,7 @@ namespace Kartamania
                 {
                     if (k.Eliminated || k.Finished || k.OutsideCourse || k.Item != ItemType.None) continue;
                     if (Vector2.DistanceSquared(k.Pos, b.Pos) > rr) continue;
-                    k.Item = RollItem();
+                    k.Item = RollItem(k);
                     k.AiItemDelay = (1.5f + (float)rng.NextDouble() * 3f) * (1f - 0.5f * aiAggression);
                     b.Respawn = 8f;
                     Burst(b.Pos, Color.Gold, 8, 160f);
