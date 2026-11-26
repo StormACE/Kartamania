@@ -643,6 +643,9 @@ namespace Kartamania
         void Heart(Vector2 center, float diameter, Color c) =>
             sb.Draw(heart, center, null, c, 0f, new Vector2(64f, 64f), diameter / 128f, SpriteEffects.None, 0f);
 
+        void Ellipse(Vector2 center, Vector2 size, float rot, Color c) =>
+            sb.Draw(disc, center, null, c, rot, new Vector2(64f, 64f), new Vector2(size.X / 128f, size.Y / 128f), SpriteEffects.None, 0f);
+
         void DrawTree(Vector2 p, float scale, TrackTheme theme, Vector2 up, Vector2 right, float rot)
         {
             Vector2 O(float x, float y) => p + right * (x * scale) + up * (y * scale);
@@ -1082,21 +1085,49 @@ namespace Kartamania
             Vector2 r = new Vector2(-f.Y, f.X);
             float alpha = (k.Invuln > 0f && (((int)(anim * 14f)) & 1) == 0) ? 0.45f : 1f;
 
-            RectC(k.Pos + new Vector2(5f, 7f), new Vector2(72f, 46f), rot, Color.Black * 0.25f);
+            Ellipse(k.Pos + new Vector2(5f, 7f), new Vector2(86f, 52f), rot, Color.Black * 0.25f);
 
             if (k.BoostTimer > 0f)
-                Disc(k.Pos - f * 48f, 28f + 10f * (float)Math.Sin(anim * 40f), Color.Orange);
+            {
+                float flame = 20f + 8f * (float)Math.Sin(anim * 40f);
+                Disc(k.Pos - f * 50f + r * 11f, flame, Color.Orange * alpha);
+                Disc(k.Pos - f * 50f - r * 11f, flame, Color.Orange * alpha);
+                Disc(k.Pos - f * 44f + r * 11f, flame * 0.55f, Color.Yellow * alpha);
+                Disc(k.Pos - f * 44f - r * 11f, flame * 0.55f, Color.Yellow * alpha);
+            }
 
-            Vector2 wheel = new Vector2(16f, 10f);
             Color wc = new Color(30, 30, 34) * alpha;
-            RectC(k.Pos + f * 20f + r * 24f, wheel, rot, wc);
-            RectC(k.Pos + f * 20f - r * 24f, wheel, rot, wc);
-            RectC(k.Pos - f * 20f + r * 24f, wheel, rot, wc);
-            RectC(k.Pos - f * 20f - r * 24f, wheel, rot, wc);
+            Color hub = new Color(180, 185, 195) * alpha;
+            float frontRot = rot + k.Steer * 0.4f * (k.Speed >= 0f ? 1f : -1f);
+            Vector2 frontA = k.Pos + f * 24f + r * 25f;
+            Vector2 frontB = k.Pos + f * 24f - r * 25f;
+            Vector2 rearA = k.Pos - f * 22f + r * 28f;
+            Vector2 rearB = k.Pos - f * 22f - r * 28f;
+            RectC(frontA, new Vector2(18f, 11f), frontRot, wc);
+            RectC(frontB, new Vector2(18f, 11f), frontRot, wc);
+            RectC(rearA, new Vector2(24f, 14f), rot, wc);
+            RectC(rearB, new Vector2(24f, 14f), rot, wc);
+            Disc(frontA, 6f, hub);
+            Disc(frontB, 6f, hub);
+            Disc(rearA, 8f, hub);
+            Disc(rearB, 8f, hub);
 
-            RectC(k.Pos, new Vector2(62f, 36f), rot, k.Color * alpha);
-            RectC(k.Pos + f * 18f, new Vector2(24f, 22f), rot, Color.White * (0.35f * alpha));
-            RectC(k.Pos - f * 31f, new Vector2(6f, 46f), rot, Color.Black * (0.7f * alpha));
+            Ellipse(k.Pos, new Vector2(80f, 44f), rot, k.Color * 0.72f * alpha);
+            Ellipse(k.Pos + f * 3f, new Vector2(68f, 36f), rot, k.Color * alpha);
+            Ellipse(k.Pos + f * 31f, new Vector2(34f, 26f), rot, k.Color * alpha);
+            Ellipse(k.Pos + r * 26f - f * 3f, new Vector2(30f, 16f), rot, k.Color * 0.85f * alpha);
+            Ellipse(k.Pos - r * 26f - f * 3f, new Vector2(30f, 16f), rot, k.Color * 0.85f * alpha);
+            Ellipse(k.Pos - f * 3f, new Vector2(34f, 24f), rot, new Color(20, 24, 30) * (0.5f * alpha));
+
+            RectC(k.Pos + f * 40f, new Vector2(9f, 56f), rot, k.Color * 0.9f * alpha);
+            RectC(k.Pos - f * 36f, new Vector2(8f, 58f), rot, k.Color * 0.8f * alpha);
+            RectC(k.Pos - f * 28f + r * 19f, new Vector2(16f, 5f), rot, Color.Black * (0.6f * alpha));
+            RectC(k.Pos - f * 28f - r * 19f, new Vector2(16f, 5f), rot, Color.Black * (0.6f * alpha));
+
+            Disc(k.Pos + f * 40f + r * 15f, 8f, Color.Yellow * alpha);
+            Disc(k.Pos + f * 40f - r * 15f, 8f, Color.Yellow * alpha);
+            Disc(k.Pos - f * 42f + r * 11f, 7f, new Color(150, 155, 165) * alpha);
+            Disc(k.Pos - f * 42f - r * 11f, 7f, new Color(150, 155, 165) * alpha);
 
             if (k.ShieldTimer > 0f)
             {
