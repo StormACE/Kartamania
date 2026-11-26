@@ -16,6 +16,8 @@ namespace Kartamania
 
         static readonly Row[] Rows = (Row[])Enum.GetValues(typeof(Row));
         static readonly float[] DifficultyStrength = { 0.88f, 1.16f, 1.33f };
+        static readonly float[] DifficultyAiStrength = { 0.90f, 0.90f, 1.062f };
+        static readonly float[] DifficultyAiAggression = { 0f, 0f, 1f };
         static readonly Color[] KartColors =
         {
             new Color(220, 50, 50), new Color(60, 110, 230), new Color(60, 180, 80), new Color(240, 200, 40),
@@ -391,7 +393,7 @@ namespace Kartamania
                 bot++;
             }
 
-            race = new Race(tracks[cfg.Track], racers, cfg.Laps, DifficultyStrength[cfg.Difficulty], rng);
+            race = new Race(tracks[cfg.Track], racers, cfg.Laps, DifficultyStrength[cfg.Difficulty], DifficultyAiStrength[cfg.Difficulty], DifficultyAiAggression[cfg.Difficulty], rng);
             camTarget = null;
             camAngle = race.Player.Angle;
             camPos = race.Player.Pos + race.Player.Heading * 260f;

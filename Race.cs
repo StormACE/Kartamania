@@ -58,6 +58,8 @@ namespace Kartamania
         public IReadOnlyList<Kart> Ranking => ranking;
 
         readonly float difficultySpeed;
+        readonly float aiStrength;
+        readonly float aiAggression;
         readonly Random rng;
         readonly List<Kart> ranking = new List<Kart>();
         float overTimer = -1f;
@@ -65,11 +67,13 @@ namespace Kartamania
         bool rocketStart;
         bool startThrottleHeld;
 
-        public Race(Track track, IList<RacerInfo> racers, int laps, float difficultySpeed, Random rng)
+        public Race(Track track, IList<RacerInfo> racers, int laps, float difficultySpeed, float aiStrength, float aiAggression, Random rng)
         {
             Track = track;
             TotalLaps = laps;
             this.difficultySpeed = difficultySpeed;
+            this.aiStrength = aiStrength;
+            this.aiAggression = aiAggression;
             this.rng = rng;
 
             // Place sur la grille de départ (mélangée).
@@ -97,7 +101,7 @@ namespace Kartamania
                 k.Angle = M.Angle(track.Tangent[idx]);
                 float laneLimit = track.Def.StrictCourse ? track.Def.LaneLimit : 80f;
                 k.AiLane = ((float)rng.NextDouble() * 2f - 1f) * laneLimit;
-                k.AiSkill = 0.94f + (float)rng.NextDouble() * 0.06f;
+                k.AiSkill = (0.94f + (float)rng.NextDouble() * 0.06f) * aiStrength;
                 k.AiItemDelay = 1f;
                 k.NextGate = 0;
                 k.LastGateIndex = track.Gates.Length > 0 ? track.Gates[track.Gates.Length - 1].Index : idx;
@@ -223,7 +227,10 @@ namespace Kartamania
             if (throttle > 0f)
             {
                 if (k.Speed < maxSpeed)
-                    k.Speed = Math.Min(maxSpeed, k.Speed + 420f * throttle * dt * (k.BoostTimer > 0f ? 2.5f : 1f));
+                {
+                    float accel = 420f * (k.IsPlayer ? 1f : aiStrength);
+                    k.Speed = Math.Min(maxSpeed, k.Speed + accel * throttle * dt * (k.BoostTimer > 0f ? 2.5f : 1f));
+                }
             }
             else if (throttle < 0f)
             {
@@ -436,7 +443,7 @@ namespace Kartamania
             Vector2 target = Track.Center[ti] + Track.Normal[ti] * k.AiLane;
             Vector2 to = target - k.Pos;
             float diff = M.WrapAngle(M.Angle(to) - k.Angle);
-            float steer = M.Clamp(diff * 2.4f, -1f, 1f);
+            float steer = M.Clamp(diff * (2.4f + 0.6f * aiAggression), -1f, 1f);
             if (Track.Def.StrictCourse)
             {
                 float lane = Vector2.Dot(k.Pos - Track.Center[k.Idx], Track.Normal[k.Idx]);
@@ -444,17 +451,24 @@ namespace Kartamania
             }
             float sharp = Math.Abs(diff);
 
-            float throttle = 1f;
-
-            // Évite les obstacles et les mines devant lui.
             Vector2 fwd = k.Heading;
             Vector2 right = new Vector2(-fwd.Y, fwd.X);
-            foreach (Vector2 o in Track.ObstaclePos) steer += Avoid(k.Pos, fwd, right, o, 70f);
-            foreach (Mine m in Mines) steer += Avoid(k.Pos, fwd, right, m.Pos, 80f);
+            float lookAhead = 180f + Math.Abs(k.Speed) * 0.75f;
+            float brake = 0f;
+            foreach (Vector2 o in Track.ObstaclePos)
+            {
+                steer += Avoid(k.Pos, fwd, right, o, lookAhead, 90f, out float b);
+                if (b > brake) brake = b;
+            }
+            foreach (Mine m in Mines)
+            {
+                steer += Avoid(k.Pos, fwd, right, m.Pos, lookAhead, 100f, out float b);
+                if (b > brake) brake = b;
+            }
             steer = M.Clamp(steer, -1f, 1f);
 
             k.Steer = steer;
-            k.Throttle = throttle;
+            k.Throttle = 1f - brake;
 
             // Utilisation des armes.
             k.AiItemDelay -= dt;
@@ -463,27 +477,33 @@ namespace Kartamania
                 bool use = false;
                 switch (k.Item)
                 {
-                    case ItemType.Boost: use = sharp < 0.15f; break;
+                    case ItemType.Boost: use = sharp < 0.15f + 0.15f * aiAggression; break;
                     case ItemType.Shield: use = true; break;
-                    case ItemType.Missile: use = FindTarget(k, 0.95f) != null && rng.NextDouble() < 0.02; break;
+                    case ItemType.Missile: use = FindTarget(k, 0.95f - 0.2f * aiAggression) != null && rng.NextDouble() < 0.02 + 0.08 * aiAggression; break;
                     case ItemType.Mine: use = SomeoneBehind(k); break;
                 }
                 if (use)
                 {
                     UseItem(k);
-                    k.AiItemDelay = 2.5f + (float)rng.NextDouble() * 3f;
+                    k.AiItemDelay = (2.5f + (float)rng.NextDouble() * 3f) * (1f - 0.6f * aiAggression);
                 }
             }
         }
 
-        static float Avoid(Vector2 pos, Vector2 fwd, Vector2 right, Vector2 obj, float halfWidth)
+        static float Avoid(Vector2 pos, Vector2 fwd, Vector2 right, Vector2 obj, float look, float halfWidth, out float brake)
         {
+            brake = 0f;
             Vector2 v = obj - pos;
             float ahead = Vector2.Dot(v, fwd);
-            if (ahead < 20f || ahead > 320f) return 0f;
+            if (ahead < 10f || ahead > look) return 0f;
             float lat = Vector2.Dot(v, right);
-            if (Math.Abs(lat) > halfWidth) return 0f;
-            return (lat >= 0f ? -1f : 1f) * (1f - ahead / 320f) * 1.4f;
+            float alat = Math.Abs(lat);
+            if (alat > halfWidth) return 0f;
+
+            float urgency = 1f - ahead / look;
+            float lateral = 1f - alat / halfWidth;
+            if (alat < 45f && ahead < 180f) brake = 0.7f * urgency;
+            return (lat >= 0f ? -1f : 1f) * (0.2f + 1.8f * urgency) * lateral * 1.6f;
         }
 
         bool SomeoneBehind(Kart k)
@@ -495,7 +515,7 @@ namespace Kartamania
                 if (o == k || o.Eliminated || o.Finished) continue;
                 Vector2 v = o.Pos - k.Pos;
                 float back = -Vector2.Dot(v, fwd);
-                if (back > 80f && back < 500f && Math.Abs(Vector2.Dot(v, right)) < 100f) return true;
+                if (back > 80f && back < 500f + 300f * aiAggression && Math.Abs(Vector2.Dot(v, right)) < 100f + 40f * aiAggression) return true;
             }
             return false;
         }
@@ -527,13 +547,13 @@ namespace Kartamania
             switch (k.Item)
             {
                 case ItemType.Missile:
-                    Kart target = FindTarget(k, k.IsPlayer ? 0.7f : 0.9f);
+                    Kart target = FindTarget(k, k.IsPlayer ? 0.7f : 0.9f - 0.2f * aiAggression);
                     Missiles.Add(new Missile
                     {
                         Pos = k.Pos + k.Heading * (Kart.Radius + 24f),
                         Angle = k.Angle,
                         Life = 3.5f,
-                        Turn = k.IsPlayer ? 3.4f : 2.0f,
+                        Turn = k.IsPlayer ? 3.4f : 2.0f + 1.2f * aiAggression,
                         Owner = k,
                         Target = target,
                     });
@@ -575,7 +595,7 @@ namespace Kartamania
                     if (k.Eliminated || k.Finished || k.OutsideCourse || k.Item != ItemType.None) continue;
                     if (Vector2.DistanceSquared(k.Pos, b.Pos) > rr) continue;
                     k.Item = RollItem();
-                    k.AiItemDelay = 1.5f + (float)rng.NextDouble() * 3f;
+                    k.AiItemDelay = (1.5f + (float)rng.NextDouble() * 3f) * (1f - 0.5f * aiAggression);
                     b.Respawn = 8f;
                     Burst(b.Pos, Color.Gold, 8, 160f);
                     Sfx.Pickup(k.IsPlayer);
