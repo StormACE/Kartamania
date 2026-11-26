@@ -39,6 +39,7 @@ namespace Kartamania
         public bool RoadMarks = true;
         public bool RockDots;
         public bool Forest;
+        public bool DenseTrees;
         public Color Grass, Rough, Road;
         public TrackTheme Theme = TrackTheme.Normal;
         public float[] BoxRows;        // positions (0..1) des rangées de boîtes d'armes
@@ -310,6 +311,7 @@ namespace Kartamania
             Name = "Étoile du Nord",
             Width = 220f,
             Scale = 1.25f,
+            DenseTrees = true,
             Theme = TrackTheme.Winter,
             Grass = new Color(35, 70, 95), Rough = new Color(28, 55, 75), Road = new Color(150, 165, 175),
             Points = new[]

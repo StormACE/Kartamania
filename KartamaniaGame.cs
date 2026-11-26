@@ -1222,8 +1222,8 @@ namespace Kartamania
 
             float Rnd(int s, int m) => (Math.Abs(s * 9301 + 49297) % m) / (float)m;
             var scenerySpots = new List<(Vector2 Pos, float Radius)>();
-            int treeStep = def.Forest ? 4 : (desert ? 7 : 8);
-            int treeLayers = def.Forest || desert ? 2 : 1;
+            int treeStep = def.Forest ? 4 : (desert ? 7 : (def.DenseTrees ? 5 : 8));
+            int treeLayers = def.Forest || desert || def.DenseTrees ? 2 : 1;
             for (int i = 0; i < n; i += treeStep)
             {
                 if (city && tr.IsNearCrossing(i, 14)) continue;
@@ -1246,20 +1246,26 @@ namespace Kartamania
                             float lateral = wall + 95f + jitter + layer * 280f;
                             p = tr.Center[i] + tr.Tangent[i] * along + tr.Normal[i] * (side * lateral);
                         }
+                        else if (def.DenseTrees)
+                        {
+                            float along = (Rnd(seed, 211) - 0.5f) * 160f;
+                            float lateral = wall + 80f + Rnd(seed + 31, 271) * 230f + layer * 170f;
+                            p = tr.Center[i] + tr.Tangent[i] * along + tr.Normal[i] * (side * lateral);
+                        }
                         else
                         {
                             float jitter = ((seed * 37) % 17 - 8) * 5f;
                             p = tr.Center[i] + tr.Normal[i] * (side * (wall + (city ? 160f : 95f) + jitter));
                         }
                         if (Vector2.DistanceSquared(p, camPos) > cull2) continue;
-                        if (def.Forest || desert)
+                        if (def.Forest || desert || def.DenseTrees)
                         {
                             int nearTrack = tr.NearestAny(p);
                             if ((p - tr.Center[nearTrack]).Length() < wall + (desert ? 50f : 80f)) continue;
                         }
                         float scale = desert
                             ? (0.72f + Rnd(seed + 5, 7) * 0.20f) * (layer == 1 ? 0.88f : 1f)
-                            : 0.85f + ((seed * 11) % 9) * 0.045f;
+                            : (0.85f + ((seed * 11) % 9) * 0.045f) * (def.DenseTrees && layer == 1 ? 0.88f : 1f);
                         if (city)
                         {
                             DrawBuilding(p, scale, seed, treeUp, treeRight, treeRot);
