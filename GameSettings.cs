@@ -80,7 +80,9 @@ namespace Kartamania
                                 if (parts.Length == 3 && parts[0].Length > 0 &&
                                     float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out best) && best > 0f)
                                 {
-                                    string bestKey = parts[0] + "|" + parts[1];
+                                    string track = parts[0] == "Desert du Sud" ? "Désert du Sud"
+                                                 : parts[0] == "Etoile du Nord" ? "Étoile du Nord" : parts[0];
+                                    string bestKey = track + "|" + parts[1];
                                     float old;
                                     if (!s.BestTimes.TryGetValue(bestKey, out old) || best < old) s.BestTimes[bestKey] = best;
                                 }

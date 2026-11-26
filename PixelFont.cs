@@ -120,12 +120,7 @@ namespace Kartamania
         {
             if (string.IsNullOrEmpty(s)) return "";
             if (cache.TryGetValue(s, out string hit)) return hit;
-            string d = s.ToUpperInvariant().Normalize(NormalizationForm.FormD);
-            var b = new StringBuilder(d.Length);
-            foreach (char c in d)
-                if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
-                    b.Append(c);
-            string r = b.ToString();
+            string r = s.ToUpperInvariant().Normalize(NormalizationForm.FormC);
             if (cache.Count > 800) cache.Clear();
             cache[s] = r;
             return r;
@@ -172,12 +167,31 @@ namespace Kartamania
             sb.DrawString(f, t, new Vector2(px, y), color);
         }
 
+        static readonly Dictionary<char, char> fallbackLetters = new Dictionary<char, char>();
+
+        static char FallbackLetter(char c)
+        {
+            if (Glyphs.ContainsKey(c)) return c;
+            char result;
+            if (fallbackLetters.TryGetValue(c, out result)) return result;
+            result = c;
+            string d = c.ToString().Normalize(NormalizationForm.FormD);
+            foreach (char part in d)
+                if (CharUnicodeInfo.GetUnicodeCategory(part) != UnicodeCategory.NonSpacingMark && Glyphs.ContainsKey(part))
+                {
+                    result = part;
+                    break;
+                }
+            fallbackLetters[c] = result;
+            return result;
+        }
+
         static void Render(SpriteBatch sb, Texture2D pixel, string t, int x, int y, int scale, Color color)
         {
             int pen = x;
             for (int n = 0; n < t.Length; n++)
             {
-                if (Glyphs.TryGetValue(t[n], out string g))
+                if (Glyphs.TryGetValue(FallbackLetter(t[n]), out string g))
                 {
                     for (int i = 0; i < 15; i++)
                         if (g[i] == '1')

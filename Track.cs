@@ -262,7 +262,7 @@ namespace Kartamania
 
         static TrackDef Desert() => new TrackDef
         {
-            Name = "Desert du Sud",
+            Name = "Désert du Sud",
             Width = 300f,
             Theme = TrackTheme.Desert,
             Grass = new Color(220, 190, 125), Rough = new Color(198, 160, 95), Road = new Color(120, 105, 92),
@@ -281,7 +281,7 @@ namespace Kartamania
 
         static TrackDef Etoile() => new TrackDef
         {
-            Name = "Etoile du Nord",
+            Name = "Étoile du Nord",
             Width = 220f,
             Scale = 1.25f,
             Theme = TrackTheme.Winter,

@@ -719,7 +719,7 @@ namespace Kartamania
                 case Row.Fps:
                     int cap = GameSettings.FpsCaps[cfg.FpsIndex];
                     return Loc.Get("LABEL_FPS_LIMIT") + ": < " + (cap > 0 ? cap.ToString() : Loc.Get("UNLIMITED")) + " >";
-                case Row.Language: return Loc.Get("LANGUAGE") + ": < " + (cfg.Language == 0 ? "FRANCAIS" : "ENGLISH") + " >";
+                case Row.Language: return Loc.Get("LANGUAGE") + ": < " + (cfg.Language == 0 ? "FRANÇAIS" : "ENGLISH") + " >";
                 default: return Loc.Get("QUIT");
             }
         }
@@ -771,16 +771,10 @@ namespace Kartamania
             Face(me.Texture, new Vector2(panel.X + panel.Width * 0.5f, faceY), T(130), 0f, Color.White);
             Text(me.IsPlaceholder ? Loc.Get("PLAYER") : me.Name, panel.X + panel.Width * 0.5f, faceY + T(80), T(4), Color.White, true);
 
-            string musicLine = MusicPlayer.Count > 0
-                ? Loc.Get("MUSIC_COUNT") + MusicPlayer.Count + Loc.Get("MUSIC_RANDOM")
-                : Loc.Get("ADD_MUSIC");
-            Text(musicLine, panel.X + panel.Width * 0.5f, panel.Y + panel.Height - T(96), T(2.5f),
-                 MusicPlayer.Count > 0 ? Color.White * 0.8f : new Color(255, 215, 60), true);
-
             if (!hasPhotos)
             {
-                Text(Loc.Get("ADD_PHOTOS"), panel.X + panel.Width * 0.5f, panel.Y + panel.Height - T(60), T(2.5f), new Color(255, 215, 60), true);
-                Text(Loc.Get("PHOTO_FORMAT"), panel.X + panel.Width * 0.5f, panel.Y + panel.Height - T(36), T(2.5f), Color.White * 0.8f, true);
+                Text(Loc.Get("ADD_PHOTOS"), panel.X + panel.Width * 0.5f, panel.Y + panel.Height - T(64), T(2.5f), new Color(255, 215, 60), true);
+                Text(Loc.Get("PHOTO_FORMAT"), panel.X + panel.Width * 0.5f, panel.Y + panel.Height - T(44), T(2.5f), Color.White * 0.8f, true);
             }
             else
             {
@@ -788,9 +782,16 @@ namespace Kartamania
                 int shown = Math.Min(faces.Count, 8);
                 float step = (panel.Width - T(60)) / 8f;
                 for (int i = 0; i < shown; i++)
-                    Face(faces[i].Texture, new Vector2(sx + step * (i + 0.5f), panel.Y + panel.Height - T(44)), Math.Min(step * 0.85f, T(70)), 0f,
+                    Face(faces[i].Texture, new Vector2(sx + step * (i + 0.5f), panel.Y + panel.Height - T(105)), Math.Min(step * 0.85f, T(70)), 0f,
                          i == cfg.Player ? Color.White : Color.White * 0.55f);
             }
+
+            string musicLine = MusicPlayer.Count > 0
+                ? Loc.Get("MUSIC_COUNT") + MusicPlayer.Count + Loc.Get("MUSIC_RANDOM")
+                : Loc.Get("ADD_MUSIC");
+            Text(musicLine, panel.X + panel.Width * 0.5f, panel.Y + panel.Height - T(23), T(2.5f),
+                 MusicPlayer.Count > 0 ? Color.White * 0.8f : new Color(255, 215, 60), true);
+
             if (faceWarning.Length > 0)
                 Text(faceWarning, panel.X + panel.Width * 0.5f, panel.Y + panel.Height + T(10), T(2.5f), Color.OrangeRed, true);
 
