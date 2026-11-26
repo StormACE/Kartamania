@@ -36,6 +36,8 @@ namespace Kartamania
         public float Scale = 1.35f;    // facteur appliqué aux points
         public float Width = 250f;     // largeur de la route
         public float Grip = 1f;        // 1 = adhérence normale, < 1 = route glissante
+        public bool RoadMarks = true;
+        public bool RockDots;
         public Color Grass, Rough, Road;
         public TrackTheme Theme = TrackTheme.Normal;
         public float[] BoxRows;        // positions (0..1) des rangées de boîtes d'armes
@@ -266,8 +268,11 @@ namespace Kartamania
         {
             Name = "Rallye Forestier",
             Width = 230f,
+            Grip = 0.50f,
+            RoadMarks = false,
+            RockDots = true,
             StartFraction = 0.07f,
-            Grass = new Color(160, 124, 76), Rough = new Color(128, 96, 58), Road = new Color(104, 98, 96),
+            Grass = new Color(160, 124, 76), Rough = new Color(104, 78, 48), Road = new Color(132, 100, 66),
             Points = new[] { V(-1800, -800), V(-600, -1050), V(400, -700), V(1250, -1050), V(2100, -650), V(2200, 100), V(1300, 380), V(1700, 1150), V(550, 1450), V(-300, 1000), V(-1000, 1400), V(-1900, 1150), V(-2300, 300), V(-1900, -350) },
             BoxRows = new[] { 0.10f, 0.25f, 0.40f, 0.55f, 0.70f, 0.85f },
             Obstacles = new[]

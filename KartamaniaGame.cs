@@ -993,7 +993,12 @@ namespace Kartamania
             {
                 if (Vector2.DistanceSquared(tr.Center[i], camPos) > cull2) continue;
                 if (city && tr.IsNearCrossing(i, 10)) continue;
-                if (i % 6 < 3) RectC(tr.Center[i], new Vector2(30f, 6f), M.Angle(tr.Tangent[i]), Color.White * 0.5f);
+                if (def.RoadMarks && i % 6 < 3) RectC(tr.Center[i], new Vector2(30f, 6f), M.Angle(tr.Tangent[i]), Color.White * 0.5f);
+                if (def.RockDots && i % 4 == 0)
+                {
+                    float lane = (((i * 37) % 17) - 8f) / 8f * (def.Width * 0.38f);
+                    Disc(tr.Center[i] + tr.Normal[i] * lane, 4f + (i % 3) * 1.5f, Color.Black * 0.55f);
+                }
             }
 
             // Ligne de départ en damier.
