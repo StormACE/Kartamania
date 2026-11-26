@@ -799,7 +799,7 @@ namespace Kartamania
 
         void KartCollisions()
         {
-            const float minD = Kart.Radius * 1.7f;
+            const float minD = Kart.Radius * 1.87f;
             for (int i = 0; i < Karts.Count; i++)
             {
                 Kart a = Karts[i];
