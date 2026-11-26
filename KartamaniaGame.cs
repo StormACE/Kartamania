@@ -1107,7 +1107,7 @@ namespace Kartamania
 
             // Le visage reste toujours droit à l'écran, même quand la caméra tourne.
             Vector2 up = M.Rot(new Vector2(0f, -1f), -camRot);
-            Face(k.Face, k.Pos + up * 14f, 60f, -camRot, Color.White * alpha);
+            Face(k.Face, k.Pos + up * 14f, 43f, -camRot, Color.White * alpha);
         }
 
         // ------------------------------------------------------------------ HUD
