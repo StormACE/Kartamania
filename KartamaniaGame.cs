@@ -674,7 +674,7 @@ namespace Kartamania
         void Ellipse(Vector2 center, Vector2 size, float rot, Color c) =>
             sb.Draw(disc, center, null, c, rot, new Vector2(64f, 64f), new Vector2(size.X / 128f, size.Y / 128f), SpriteEffects.None, 0f);
 
-        void DrawTree(Vector2 p, float scale, TrackTheme theme, Vector2 up, Vector2 right, float rot)
+        void DrawTree(Vector2 p, float scale, TrackTheme theme, Vector2 up, Vector2 right, float rot, int variant)
         {
             Vector2 O(float x, float y) => p + right * (x * scale) + up * (y * scale);
             Color bark = theme == TrackTheme.Desert ? new Color(150, 112, 74) : new Color(95, 65, 42);
@@ -696,21 +696,50 @@ namespace Kartamania
                 return;
             }
 
+            int shape = Math.Abs(variant) % 4;
+            int tint = Math.Abs(variant * 13) % 19;
+            Color leafA = new Color(30 + tint, 90 + tint, 45);
+            Color leafB = new Color(45 + tint, 115 + tint, 55);
+            Color leafC = new Color(58 + tint, 138 + tint, 64);
+
             RectC(O(0f, -16f), new Vector2(12f, 42f) * scale, rot, barkDark);
             RectC(O(1f, -16f), new Vector2(4f, 40f) * scale, rot, bark);
 
-            Disc(O(0f, 20f), 72f * scale, new Color(35, 95, 50));
-            Disc(O(-20f, 4f), 54f * scale, new Color(45, 115, 55));
-            Disc(O(20f, 2f), 52f * scale, new Color(55, 135, 60));
-            Disc(O(-6f, 30f), 46f * scale, new Color(60, 145, 65));
+            if (shape == 0)
+            {
+                Disc(O(0f, 20f), 72f * scale, leafA);
+                Disc(O(-20f, 4f), 54f * scale, leafB);
+                Disc(O(20f, 2f), 52f * scale, leafC);
+                Disc(O(-6f, 30f), 46f * scale, leafB);
+            }
+            else if (shape == 1)
+            {
+                Ellipse(O(0f, 34f), new Vector2(88f, 120f) * scale, rot, leafA);
+                Ellipse(O(0f, 78f), new Vector2(62f, 104f) * scale, rot, leafB);
+                Ellipse(O(0f, 114f), new Vector2(34f, 72f) * scale, rot, leafC);
+            }
+            else if (shape == 2)
+            {
+                Disc(O(-18f, 22f), 56f * scale, leafA);
+                Disc(O(20f, 26f), 54f * scale, leafB);
+                Disc(O(0f, 44f), 62f * scale, leafC);
+                Disc(O(-4f, 60f), 36f * scale, leafA);
+            }
+            else
+            {
+                Disc(O(-26f, 12f), 44f * scale, leafA);
+                Disc(O(24f, 16f), 46f * scale, leafB);
+                Disc(O(0f, 34f), 50f * scale, leafC);
+                Disc(O(-8f, 48f), 32f * scale, leafB);
+            }
 
             if (theme == TrackTheme.Winter)
             {
                 Color snow = new Color(240, 248, 255);
-                Disc(O(0f, 44f), 54f * scale, snow);
+                Disc(O(0f, 44f + shape * 12f), 54f * scale, snow);
                 Disc(O(-24f, 22f), 36f * scale, snow);
                 Disc(O(22f, 20f), 34f * scale, snow);
-                Disc(O(-6f, 50f), 28f * scale, Color.White);
+                Disc(O(-6f, 50f + shape * 12f), 28f * scale, Color.White);
             }
         }
 
@@ -1041,22 +1070,43 @@ namespace Kartamania
             }
 
 
-            for (int i = 0; i < n; i += 8)
+            float Rnd(int s, int m) => (Math.Abs(s * 9301 + 49297) % m) / (float)m;
+            int treeStep = def.Forest ? 4 : 8;
+            int treeLayers = def.Forest ? 2 : 1;
+            for (int i = 0; i < n; i += treeStep)
             {
                 if (city && tr.IsNearCrossing(i, 14)) continue;
                 for (int side = -1; side <= 1; side += 2)
                 {
-                    int seed = i * 7 + (side + 1) * 13;
-                    float jitter = ((seed * 37) % 17 - 8) * 5f;
-                    Vector2 p = tr.Center[i] + tr.Normal[i] * (side * (wall + (city ? 160f : 95f) + jitter));
-                    if (Vector2.DistanceSquared(p, camPos) > cull2) continue;
-                    float scale = 0.85f + ((seed * 11) % 9) * 0.045f;
-                    if (city)
+                    for (int layer = 0; layer < treeLayers; layer++)
                     {
-                        DrawBuilding(p, scale, seed, treeUp, treeRight, treeRot);
-                        if (i % 32 == 0) DrawLamp(p - tr.Normal[i] * (side * 70f), scale, treeUp, treeRight, treeRot);
+                        int seed = i * 7 + (side + 1) * 13 + layer * 29;
+                        Vector2 p;
+                        if (def.Forest)
+                        {
+                            float along = (Rnd(seed, 211) - 0.5f) * 190f;
+                            float lateral = wall + 70f + Rnd(seed + 31, 271) * 260f;
+                            p = tr.Center[i] + tr.Tangent[i] * along + tr.Normal[i] * (side * lateral);
+                        }
+                        else
+                        {
+                            float jitter = ((seed * 37) % 17 - 8) * 5f;
+                            p = tr.Center[i] + tr.Normal[i] * (side * (wall + (city ? 160f : 95f) + jitter));
+                        }
+                        if (Vector2.DistanceSquared(p, camPos) > cull2) continue;
+                        if (def.Forest)
+                        {
+                            int nearTrack = tr.NearestAny(p);
+                            if ((p - tr.Center[nearTrack]).Length() < wall + 80f) continue;
+                        }
+                        float scale = 0.85f + ((seed * 11) % 9) * 0.045f;
+                        if (city)
+                        {
+                            DrawBuilding(p, scale, seed, treeUp, treeRight, treeRot);
+                            if (i % 32 == 0) DrawLamp(p - tr.Normal[i] * (side * 70f), scale, treeUp, treeRight, treeRot);
+                        }
+                        else DrawTree(p, scale, def.Theme, treeUp, treeRight, treeRot, seed + layer * 17);
                     }
-                    else DrawTree(p, scale, def.Theme, treeUp, treeRight, treeRot);
                 }
             }
 
