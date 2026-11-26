@@ -1095,6 +1095,9 @@ namespace Kartamania
             {
                 int num = (int)Math.Ceiling(race.Countdown);
                 Text(num.ToString(), w * 0.5f, h * 0.30f, T(28), new Color(255, 215, 60), true);
+                if (race.Countdown <= Race.RocketStartWindow)
+                    Text(Loc.Get("HINT_ROCKET"), w * 0.5f, h * 0.30f + T(18), T(3),
+                         new Color(120, 255, 160), true);
             }
             else if (race.Time < 0.9f)
             {

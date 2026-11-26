@@ -36,6 +36,8 @@ namespace Kartamania
         public const float RespawnClearance = 120f;
         public const float GridSideOffset = 95f;
         public const int GridRowSpacing = 5;
+        public const float RocketStartWindow = 0.4f;
+        public const float RocketStartDuration = 1.2f;
 
         public readonly Track Track;
         public readonly List<Kart> Karts = new List<Kart>();
@@ -58,6 +60,8 @@ namespace Kartamania
         readonly List<Kart> ranking = new List<Kart>();
         float overTimer = -1f;
         int finishCounter;
+        bool rocketStart;
+        bool startThrottleHeld;
 
         public Race(Track track, IList<RacerInfo> racers, int laps, float difficultySpeed, Random rng)
         {
@@ -115,8 +119,22 @@ namespace Kartamania
 
             if (Countdown > 0f)
             {
+                bool pressing = input.Throttle > 0.5f;
+                if (Player != null && pressing && !startThrottleHeld && Countdown <= RocketStartWindow)
+                    rocketStart = true;
+                startThrottleHeld = pressing;
+
                 Countdown -= dt;
                 if (Countdown > 0f) return;
+
+                if (rocketStart && Player != null && !Player.Finished)
+                {
+                    Player.BoostTimer = RocketStartDuration;
+                    Sfx.UseItem(ItemType.Boost);
+                    Burst(Player.Pos, new Color(255, 220, 80), 18, 260f);
+                    Say(Loc.Get("MSG_BOOST"));
+                }
+                rocketStart = false;
             }
 
             Time += dt;

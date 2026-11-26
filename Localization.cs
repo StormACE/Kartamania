@@ -81,6 +81,8 @@ namespace Kartamania
             { "MSG_SELF_ELIM", new[] { " S'EST ELIMINE!", " ELIMINATED THEMSELVES!" } },
             { "MSG_HIT", new[] { " TOUCHE ", " HIT " } },
             { "MSG_RESPAWN", new[] { " REMIS SUR LA PISTE!", " BACK ON TRACK!" } },
+            { "MSG_BOOST", new[] { " BOOST DE DEPART!", " ROCKET START!" } },
+            { "HINT_ROCKET", new[] { "APPUIE ACCELERATEUR MAINTENANT!", "PRESS ACCELERATE NOW!" } },
         };
 
         static readonly Dictionary<string, string> TrackNames = new Dictionary<string, string>
