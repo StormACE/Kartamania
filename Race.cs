@@ -440,35 +440,42 @@ namespace Kartamania
                 int gate = Track.Gates[k.NextGate % Track.Gates.Length].Index;
                 if (Track.Forward(k.Idx, gate) <= look + 10) ti = gate;
             }
-            Vector2 target = Track.Center[ti] + Track.Normal[ti] * k.AiLane;
-            Vector2 to = target - k.Pos;
-            float diff = M.WrapAngle(M.Angle(to) - k.Angle);
-            float steer = M.Clamp(diff * (2.4f + 0.6f * aiAggression), -1f, 1f);
-            if (Track.Def.StrictCourse)
-            {
-                float lane = Vector2.Dot(k.Pos - Track.Center[k.Idx], Track.Normal[k.Idx]);
-                steer += M.Clamp((k.AiLane - lane) * 0.006f, -0.3f, 0.3f);
-            }
-            float sharp = Math.Abs(diff);
 
-            Vector2 fwd = k.Heading;
-            Vector2 right = new Vector2(-fwd.Y, fwd.X);
+            float minLane = -Track.HalfWidth + Kart.Radius + 12f;
+            float maxLane = Track.HalfWidth - Kart.Radius - 12f;
+            float lane = M.Clamp(k.AiLane, minLane, maxLane);
             float lookAhead = 180f + Math.Abs(k.Speed) * 0.75f;
             float brake = 0f;
             foreach (Vector2 o in Track.ObstaclePos)
-            {
-                steer += Avoid(k.Pos, fwd, right, o, lookAhead, 90f, out float b);
-                if (b > brake) brake = b;
-            }
+                lane = AvoidObstacleLane(k, o, lane, ObstacleRadius, lookAhead, minLane, maxLane, ref brake);
             foreach (Mine m in Mines)
+                lane = AvoidObstacleLane(k, m.Pos, lane, 34f, lookAhead, minLane, maxLane, ref brake);
+
+            Vector2 target = Track.Center[ti] + Track.Normal[ti] * lane;
+            Vector2 to = target - k.Pos;
+            float diff = M.WrapAngle(M.Angle(to) - k.Angle);
+            float steer = M.Clamp(diff * (2.6f + 0.4f * aiAggression), -1f, 1f);
+
+            Vector2 localOff = k.Pos - Track.Center[k.Idx];
+            float laneNow = Vector2.Dot(localOff, Track.Normal[k.Idx]);
+            float laneError = lane - laneNow;
+            steer += M.Clamp(laneError * 0.012f, -0.6f, 0.6f);
+            float sharp = Math.Abs(diff);
+
+            float corner = M.Clamp((sharp - 0.25f) / 0.8f, 0f, 1f);
+            float throttle = 1f - Math.Max(brake, corner * 0.55f);
+
+            if (k.OffRoad || k.OutsideCourse)
             {
-                steer += Avoid(k.Pos, fwd, right, m.Pos, lookAhead, 100f, out float b);
-                if (b > brake) brake = b;
+                int near = k.OutsideCourse ? Track.NearestAny(k.Pos) : k.Idx;
+                Vector2 recover = Track.Center[near] + Track.Normal[near] * lane - k.Pos;
+                float recoverDiff = M.WrapAngle(M.Angle(recover) - k.Angle);
+                steer = M.Clamp(recoverDiff * 3f, -1f, 1f);
+                throttle = Math.Min(throttle, 0.7f);
             }
-            steer = M.Clamp(steer, -1f, 1f);
 
             k.Steer = steer;
-            k.Throttle = 1f - brake;
+            k.Throttle = throttle;
 
             // Utilisation des armes.
             k.AiItemDelay -= dt;
@@ -491,20 +498,31 @@ namespace Kartamania
             }
         }
 
-        static float Avoid(Vector2 pos, Vector2 fwd, Vector2 right, Vector2 obj, float look, float halfWidth, out float brake)
+        float AvoidObstacleLane(Kart k, Vector2 obj, float lane, float radius, float look,
+                                float minLane, float maxLane, ref float brake)
         {
-            brake = 0f;
-            Vector2 v = obj - pos;
-            float ahead = Vector2.Dot(v, fwd);
-            if (ahead < 10f || ahead > look) return 0f;
-            float lat = Vector2.Dot(v, right);
-            float alat = Math.Abs(lat);
-            if (alat > halfWidth) return 0f;
+            int oi = Track.NearestAny(obj);
+            float dist = Track.Forward(k.Idx, oi) * Track.Spacing;
+            if (dist < 20f || dist > look) return lane;
 
-            float urgency = 1f - ahead / look;
-            float lateral = 1f - alat / halfWidth;
-            if (alat < 45f && ahead < 180f) brake = 0.7f * urgency;
-            return (lat >= 0f ? -1f : 1f) * (0.2f + 1.8f * urgency) * lateral * 1.6f;
+            float objLane = Vector2.Dot(obj - Track.Center[oi], Track.Normal[oi]);
+            float clearance = radius + Kart.Radius + 16f;
+            if (Math.Abs(lane - objLane) >= clearance) return lane;
+
+            float left = M.Clamp(objLane - clearance, minLane, maxLane);
+            float right = M.Clamp(objLane + clearance, minLane, maxLane);
+            bool leftOk = Math.Abs(left - objLane) >= clearance - 1f;
+            bool rightOk = Math.Abs(right - objLane) >= clearance - 1f;
+            float choice;
+            if (leftOk && rightOk)
+                choice = Math.Abs(left - lane) <= Math.Abs(right - lane) ? left : right;
+            else if (leftOk) choice = left;
+            else if (rightOk) choice = right;
+            else choice = lane < objLane ? minLane : maxLane;
+
+            float urgency = M.Clamp(1f - dist / look, 0f, 1f);
+            if (dist < 170f) brake = Math.Max(brake, 0.5f * (1f - dist / 170f));
+            return lane + (choice - lane) * M.Clamp(urgency * 1.6f, 0f, 1f);
         }
 
         bool SomeoneBehind(Kart k)
