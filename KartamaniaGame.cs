@@ -1081,15 +1081,18 @@ namespace Kartamania
             if (k.Eliminated) return;
 
             float rot = k.Angle + k.SpinVisual;
-            Vector2 f = M.Dir(rot);
+            const float s = 0.9f;
+            Vector2 f = M.Dir(rot) * s;
             Vector2 r = new Vector2(-f.Y, f.X);
+            Vector2 V(float x, float y) => new Vector2(x * s, y * s);
+            float D(float v) => v * s;
             float alpha = (k.Invuln > 0f && (((int)(anim * 14f)) & 1) == 0) ? 0.45f : 1f;
 
-            Ellipse(k.Pos + new Vector2(5f, 7f), new Vector2(86f, 52f), rot, Color.Black * 0.25f);
+            Ellipse(k.Pos + V(5f, 7f), V(86f, 52f), rot, Color.Black * 0.25f);
 
             if (k.BoostTimer > 0f)
             {
-                float flame = 20f + 8f * (float)Math.Sin(anim * 40f);
+                float flame = D(20f + 8f * (float)Math.Sin(anim * 40f));
                 Disc(k.Pos - f * 50f + r * 11f, flame, Color.Orange * alpha);
                 Disc(k.Pos - f * 50f - r * 11f, flame, Color.Orange * alpha);
                 Disc(k.Pos - f * 44f + r * 11f, flame * 0.55f, Color.Yellow * alpha);
@@ -1103,42 +1106,42 @@ namespace Kartamania
             Vector2 frontB = k.Pos + f * 24f - r * 25f;
             Vector2 rearA = k.Pos - f * 22f + r * 28f;
             Vector2 rearB = k.Pos - f * 22f - r * 28f;
-            RectC(frontA, new Vector2(18f, 11f), frontRot, wc);
-            RectC(frontB, new Vector2(18f, 11f), frontRot, wc);
-            RectC(rearA, new Vector2(24f, 14f), rot, wc);
-            RectC(rearB, new Vector2(24f, 14f), rot, wc);
-            Disc(frontA, 6f, hub);
-            Disc(frontB, 6f, hub);
-            Disc(rearA, 8f, hub);
-            Disc(rearB, 8f, hub);
+            RectC(frontA, V(18f, 11f), frontRot, wc);
+            RectC(frontB, V(18f, 11f), frontRot, wc);
+            RectC(rearA, V(24f, 14f), rot, wc);
+            RectC(rearB, V(24f, 14f), rot, wc);
+            Disc(frontA, D(6f), hub);
+            Disc(frontB, D(6f), hub);
+            Disc(rearA, D(8f), hub);
+            Disc(rearB, D(8f), hub);
 
-            Ellipse(k.Pos, new Vector2(80f, 44f), rot, k.Color * 0.72f * alpha);
-            Ellipse(k.Pos + f * 3f, new Vector2(68f, 36f), rot, k.Color * alpha);
-            Ellipse(k.Pos + f * 31f, new Vector2(34f, 26f), rot, k.Color * alpha);
-            Ellipse(k.Pos + r * 26f - f * 3f, new Vector2(30f, 16f), rot, k.Color * 0.85f * alpha);
-            Ellipse(k.Pos - r * 26f - f * 3f, new Vector2(30f, 16f), rot, k.Color * 0.85f * alpha);
-            Ellipse(k.Pos - f * 3f, new Vector2(34f, 24f), rot, new Color(20, 24, 30) * (0.5f * alpha));
+            Ellipse(k.Pos, V(80f, 44f), rot, k.Color * 0.72f * alpha);
+            Ellipse(k.Pos + f * 3f, V(68f, 36f), rot, k.Color * alpha);
+            Ellipse(k.Pos + f * 31f, V(34f, 26f), rot, k.Color * alpha);
+            Ellipse(k.Pos + r * 26f - f * 3f, V(30f, 16f), rot, k.Color * 0.85f * alpha);
+            Ellipse(k.Pos - r * 26f - f * 3f, V(30f, 16f), rot, k.Color * 0.85f * alpha);
+            Ellipse(k.Pos - f * 3f, V(34f, 24f), rot, new Color(20, 24, 30) * (0.5f * alpha));
 
-            RectC(k.Pos + f * 40f, new Vector2(9f, 56f), rot, k.Color * 0.9f * alpha);
-            RectC(k.Pos - f * 36f, new Vector2(8f, 58f), rot, k.Color * 0.8f * alpha);
-            RectC(k.Pos - f * 28f + r * 19f, new Vector2(16f, 5f), rot, Color.Black * (0.6f * alpha));
-            RectC(k.Pos - f * 28f - r * 19f, new Vector2(16f, 5f), rot, Color.Black * (0.6f * alpha));
+            RectC(k.Pos + f * 40f, V(9f, 56f), rot, k.Color * 0.9f * alpha);
+            RectC(k.Pos - f * 36f, V(8f, 58f), rot, k.Color * 0.8f * alpha);
+            RectC(k.Pos - f * 28f + r * 19f, V(16f, 5f), rot, Color.Black * (0.6f * alpha));
+            RectC(k.Pos - f * 28f - r * 19f, V(16f, 5f), rot, Color.Black * (0.6f * alpha));
 
-            Disc(k.Pos + f * 40f + r * 15f, 8f, Color.Yellow * alpha);
-            Disc(k.Pos + f * 40f - r * 15f, 8f, Color.Yellow * alpha);
-            Disc(k.Pos - f * 42f + r * 11f, 7f, new Color(150, 155, 165) * alpha);
-            Disc(k.Pos - f * 42f - r * 11f, 7f, new Color(150, 155, 165) * alpha);
+            Disc(k.Pos + f * 40f + r * 15f, D(8f), Color.Yellow * alpha);
+            Disc(k.Pos + f * 40f - r * 15f, D(8f), Color.Yellow * alpha);
+            Disc(k.Pos - f * 42f + r * 11f, D(7f), new Color(150, 155, 165) * alpha);
+            Disc(k.Pos - f * 42f - r * 11f, D(7f), new Color(150, 155, 165) * alpha);
 
             if (k.ShieldTimer > 0f)
             {
                 float blink = (k.ShieldTimer < 2f && (((int)(anim * 10f)) & 1) == 0) ? 0.5f : 1f;
-                Disc(k.Pos, 104f, Color.Cyan * (0.20f * blink));
-                Disc(k.Pos, 96f, Color.Cyan * (0.15f * blink));
+                Disc(k.Pos, D(104f), Color.Cyan * (0.20f * blink));
+                Disc(k.Pos, D(96f), Color.Cyan * (0.15f * blink));
             }
 
             // Le visage reste toujours droit à l'écran, même quand la caméra tourne.
             Vector2 up = M.Rot(new Vector2(0f, -1f), -camRot);
-            Face(k.Face, k.Pos + up * 14f, 43f, -camRot, Color.White * alpha);
+            Face(k.Face, k.Pos + up * D(14f), D(43f), -camRot, Color.White * alpha);
         }
 
         // ------------------------------------------------------------------ HUD
