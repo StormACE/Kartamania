@@ -93,7 +93,7 @@ namespace Kartamania
                 int slot = slots[i];
                 int row = slot / 2;
                 float side = (slot % 2 == 0) ? -1f : 1f;
-                int idx = ((track.N - 4 - row * GridRowSpacing) % track.N + track.N) % track.N;
+                int idx = M.Wrap(track.StartIndex - 4 - row * GridRowSpacing, track.N);
 
                 k.Idx = idx;
                 k.Lap = -1;
@@ -287,7 +287,9 @@ namespace Kartamania
         {
             int old = k.Idx;
             int idx = Track.Nearest(k.Pos, old, 28);
-            int d = idx - old;
+            int oldRel = M.Wrap(old - Track.StartIndex, Track.N);
+            int newRel = M.Wrap(idx - Track.StartIndex, Track.N);
+            int d = newRel - oldRel;
             if (d < -Track.N / 2) { k.Lap++; if (k.IsPlayer) Sfx.Lap(); }
             else if (d > Track.N / 2) k.Lap--;
             k.Idx = idx;
@@ -424,7 +426,7 @@ namespace Kartamania
         void UpdateProgress(Kart k)
         {
             float along = Vector2.Dot(k.Pos - Track.Center[k.Idx], Track.Tangent[k.Idx]) / Track.Spacing;
-            k.Progress = k.Lap * Track.N + k.Idx + along;
+            k.Progress = k.Lap * Track.N + M.Wrap(k.Idx - Track.StartIndex, Track.N) + along;
         }
 
 

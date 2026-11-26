@@ -40,6 +40,7 @@ namespace Kartamania
         public float[] BoxRows;        // positions (0..1) des rangées de boîtes d'armes
         public Vector2[] Obstacles;    // X = position sur la piste (0..1), Y = décalage latéral
         public bool StrictCourse;
+        public float StartFraction;
         public float[] Checkpoints;
         public Vector2[] CrossingPoints;
         public float LaneLimit = 80f;
@@ -57,6 +58,7 @@ namespace Kartamania
         public readonly Vector2[] ObstaclePos, BoxPos;
         public readonly TrackGate[] Gates;
         public readonly int[] CrossingIndex;
+        public readonly int StartIndex;
         public readonly Vector2 Min, Max;
 
         public Track(TrackDef def)
@@ -85,6 +87,7 @@ namespace Kartamania
             Length = cum[dn];
             N = Math.Max(80, (int)(Length / 24f));
             Spacing = Length / N;
+            StartIndex = M.Wrap((int)(def.StartFraction * N), N);
 
             Center = new Vector2[N];
             Tangent = new Vector2[N];
@@ -117,7 +120,7 @@ namespace Kartamania
             Gates = new TrackGate[def.Checkpoints == null ? 0 : def.Checkpoints.Length];
             for (int k = 0; k < Gates.Length; k++)
             {
-                int idx = M.Wrap((int)(def.Checkpoints[k] * N), N);
+                int idx = M.Wrap(StartIndex + (int)(def.Checkpoints[k] * N), N);
                 float half = HalfWidth + Shoulder * 0.8f;
                 Gates[k] = new TrackGate
                 {
@@ -159,7 +162,7 @@ namespace Kartamania
             ObstaclePos = new Vector2[def.Obstacles.Length];
             for (int i = 0; i < ObstaclePos.Length; i++)
             {
-                int idx = ((int)(def.Obstacles[i].X * N)) % N;
+                int idx = M.Wrap(StartIndex + (int)(def.Obstacles[i].X * N), N);
                 ObstaclePos[i] = Center[idx] + Normal[idx] * def.Obstacles[i].Y;
             }
 
@@ -167,7 +170,7 @@ namespace Kartamania
             BoxPos = new Vector2[def.BoxRows.Length * lanes.Length];
             for (int r = 0; r < def.BoxRows.Length; r++)
             {
-                int idx = ((int)(def.BoxRows[r] * N)) % N;
+                int idx = M.Wrap(StartIndex + (int)(def.BoxRows[r] * N), N);
                 for (int l = 0; l < lanes.Length; l++)
                     BoxPos[r * lanes.Length + l] = Center[idx] + Normal[idx] * lanes[l];
             }
@@ -261,6 +264,7 @@ namespace Kartamania
         {
             Name = "Rallye du Sous-sol",
             Width = 230f,
+            StartFraction = 0.07f,
             Grass = new Color(160, 124, 76), Rough = new Color(128, 96, 58), Road = new Color(104, 98, 96),
             Points = new[] { V(-1800, -800), V(-600, -1050), V(400, -700), V(1250, -1050), V(2100, -650), V(2200, 100), V(1300, 380), V(1700, 1150), V(550, 1450), V(-300, 1000), V(-1000, 1400), V(-1900, 1150), V(-2300, 300), V(-1900, -350) },
             BoxRows = new[] { 0.10f, 0.25f, 0.40f, 0.55f, 0.70f, 0.85f },
@@ -276,6 +280,7 @@ namespace Kartamania
         {
             Name = "Désert du Sud",
             Width = 300f,
+            StartFraction = 0.04f,
             Theme = TrackTheme.Desert,
             Grass = new Color(220, 190, 125), Rough = new Color(198, 160, 95), Road = new Color(120, 105, 92),
             Points = new[]

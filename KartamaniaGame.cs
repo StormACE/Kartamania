@@ -797,7 +797,7 @@ namespace Kartamania
         {
             for (int i = 0; i < t.N; i += 2)
                 Disc(MapPoint(t, r, t.Center[i]), dot, Color.White * 0.75f);
-            Disc(MapPoint(t, r, t.Center[0]), dot * 2.2f, Color.Red);   // ligne de départ
+            Disc(MapPoint(t, r, t.Center[t.StartIndex]), dot * 2.2f, Color.Red);   // ligne de départ
         }
 
         // ================================================================== dessin
@@ -998,23 +998,25 @@ namespace Kartamania
 
             // Ligne de départ en damier.
             {
+                int start = tr.StartIndex;
                 float c = def.Width / 14f;
-                float rot = M.Angle(tr.Tangent[0]);
+                float rot = M.Angle(tr.Tangent[start]);
                 for (int a = 0; a < 14; a++)
                     for (int b = 0; b < 2; b++)
                     {
-                        Vector2 p = tr.Center[0] + tr.Normal[0] * ((a - 6.5f) * c) + tr.Tangent[0] * ((b - 0.5f) * c);
+                        Vector2 p = tr.Center[start] + tr.Normal[start] * ((a - 6.5f) * c) + tr.Tangent[start] * ((b - 0.5f) * c);
                         RectC(p, new Vector2(c, c), rot, ((a + b) % 2 == 0) ? Color.White : Color.Black);
                     }
             }
 
             if (city)
             {
+                int start = tr.StartIndex;
                 float c = def.Width / 14f;
-                float rot = M.Angle(tr.Tangent[0]);
+                float rot = M.Angle(tr.Tangent[start]);
                 for (int a = 0; a < 8; a++)
                 {
-                    Vector2 p = tr.Center[0] + tr.Tangent[0] * (c * 3.5f) + tr.Normal[0] * ((a - 3.5f) * c * 1.7f);
+                    Vector2 p = tr.Center[start] + tr.Tangent[start] * (c * 3.5f) + tr.Normal[start] * ((a - 3.5f) * c * 1.7f);
                     RectC(p, new Vector2(c * 1.3f, c * 3.2f), rot, Color.White * 0.7f);
                 }
             }
