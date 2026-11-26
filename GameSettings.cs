@@ -74,7 +74,7 @@ namespace Kartamania
                         case "track": if (isInt) s.Track = Math.Max(0, n); break;
                         case "player": if (isInt) s.Player = Math.Max(0, n); break;
                         case "difficulty": if (isInt) s.Difficulty = Math.Max(0, Math.Min(2, n)); break;
-                        case "laps": if (isInt) s.Laps = Math.Max(1, Math.Min(9, n)); break;
+                        case "laps": if (isInt) s.Laps = Math.Max(1, Math.Min(20, n)); break;
                         case "pilots": if (isInt) s.RacerCount = Math.Max(1, Math.Min(10, n)); break;
                         case "language": if (isInt) s.Language = Math.Max(0, Math.Min(1, n)); break;
                         case "best":

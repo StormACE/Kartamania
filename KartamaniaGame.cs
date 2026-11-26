@@ -352,7 +352,7 @@ namespace Kartamania
                     else if (enter) StartRace();
                     break;
                 case Row.Laps:
-                    if (dir != 0) cfg.Laps = (int)M.Clamp(cfg.Laps + dir, 1, 9);
+                    if (dir != 0) cfg.Laps = (int)M.Clamp(cfg.Laps + dir, 1, 20);
                     else if (enter) StartRace();
                     break;
                 case Row.Pilots:
