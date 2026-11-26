@@ -797,6 +797,19 @@ namespace Kartamania
             ApplyCollisionSlow(behind, KartSlowDuration);
         }
 
+        void ApplySideSpin(Kart victim, Kart attacker, Vector2 n, float strength, int side)
+        {
+            float norm = M.Clamp(strength / BaseSpeed, 0f, 1.5f);
+            victim.SpinTimer = Math.Max(victim.SpinTimer, 0.45f + 0.7f * norm);
+            victim.Speed = Math.Max(victim.Speed, strength * 0.8f);
+            victim.Vel += n * (strength * 0.5f);
+            victim.SpinVisual += side * 6f;
+            ApplyCollisionSlow(attacker, KartSlowDuration * 0.5f);
+            Burst(victim.Pos, Color.Orange, 12, 220f);
+            Sfx.ObstacleCollision(victim.IsPlayer);
+            Say(attacker.Name + Loc.Get("MSG_HIT") + victim.Name + "!");
+        }
+
         void KartCollisions()
         {
             const float minD = Kart.Radius * 1.87f;
@@ -825,12 +838,36 @@ namespace Kartamania
                         a.Vel -= imp;
                         b.Vel += imp;
 
-                        Kart behind = BehindOf(a, b, n);
-                        if (behind != null) PushFromBehind(behind, behind == a ? b : a, rel);
-                        else
+                        bool spun = false;
+                        float speedA = Math.Max(0f, Vector2.Dot(a.Vel, n));
+                        float speedB = Math.Max(0f, Vector2.Dot(b.Vel, -n));
+
+                        if (!spun && Vector2.Dot(a.Heading, n) > 0.55f &&
+                            Math.Abs(Vector2.Dot(b.Heading, n)) < 0.55f && speedA > BaseSpeed * 0.25f)
                         {
-                            ApplyCollisionSlow(a, KartSlowDuration);
-                            ApplyCollisionSlow(b, KartSlowDuration);
+                            Vector2 rightB = new Vector2(-b.Heading.Y, b.Heading.X);
+                            int side = Vector2.Dot(n, rightB) >= 0f ? 1 : -1;
+                            ApplySideSpin(b, a, n, speedA, side);
+                            spun = true;
+                        }
+                        else if (!spun && Vector2.Dot(b.Heading, -n) > 0.55f &&
+                                 Math.Abs(Vector2.Dot(a.Heading, n)) < 0.55f && speedB > BaseSpeed * 0.25f)
+                        {
+                            Vector2 rightA = new Vector2(-a.Heading.Y, a.Heading.X);
+                            int side = Vector2.Dot(-n, rightA) >= 0f ? 1 : -1;
+                            ApplySideSpin(a, b, -n, speedB, side);
+                            spun = true;
+                        }
+
+                        if (!spun)
+                        {
+                            Kart behind = BehindOf(a, b, n);
+                            if (behind != null) PushFromBehind(behind, behind == a ? b : a, rel);
+                            else
+                            {
+                                ApplyCollisionSlow(a, KartSlowDuration);
+                                ApplyCollisionSlow(b, KartSlowDuration);
+                            }
                         }
                     }
                 }
