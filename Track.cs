@@ -237,7 +237,7 @@ namespace Kartamania
 
         static TrackDef Salon() => new TrackDef
         {
-            Name = "Circuit du Salon",
+            Name = "Circuit Ovale",
             Width = 260f,
             Grass = new Color(72, 150, 72), Rough = new Color(58, 125, 58), Road = new Color(78, 78, 90),
             Points = new[] { V(-1300, -650), V(0, -850), V(1300, -650), V(1850, 0), V(1300, 650), V(0, 850), V(-1300, 650), V(-1850, 0) },
@@ -247,7 +247,7 @@ namespace Kartamania
 
         static TrackDef Lac() => new TrackDef
         {
-            Name = "Lac du Chalet",
+            Name = "Montagnes du québec",
             Width = 240f,
             Theme = TrackTheme.Winter,
             Grass = new Color(205, 225, 238), Rough = new Color(170, 196, 214), Road = new Color(66, 72, 92),
@@ -262,7 +262,7 @@ namespace Kartamania
 
         static TrackDef SousSol() => new TrackDef
         {
-            Name = "Rallye du Sous-sol",
+            Name = "Rallye Forestier",
             Width = 230f,
             StartFraction = 0.07f,
             Grass = new Color(160, 124, 76), Rough = new Color(128, 96, 58), Road = new Color(104, 98, 96),
