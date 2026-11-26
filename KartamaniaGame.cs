@@ -1143,7 +1143,7 @@ namespace Kartamania
             TrackDef def = tr.Def;
             bool city = def.Theme == TrackTheme.City;
             bool desert = def.Theme == TrackTheme.Desert;
-            bool oval = def.Name == "Circuit Ovale";
+            bool scattered = def.Name == "Circuit Ovale" || def.Name == "Montagnes du québec";
             int n = tr.N;
             int w = W, h = H;
 
@@ -1269,8 +1269,8 @@ namespace Kartamania
                 }
             }
 
-            int treeStep = def.Forest ? 2 : (city ? 3 : (desert ? 7 : (def.DenseTrees ? 5 : (oval ? 3 : 8))));
-            int treeLayers = def.Forest || city || desert || def.DenseTrees || oval ? 2 : 1;
+            int treeStep = def.Forest ? 2 : (city ? 3 : (desert ? 7 : (def.DenseTrees ? 5 : (scattered ? 3 : 8))));
+            int treeLayers = def.Forest || city || desert || def.DenseTrees || scattered ? 2 : 1;
             for (int i = 0; i < n; i += treeStep)
             {
                 if (city && tr.IsNearCrossing(i, 14)) continue;
@@ -1305,7 +1305,7 @@ namespace Kartamania
                             float lateral = wall + 80f + Rnd(seed + 31, 271) * 230f + layer * 170f;
                             p = tr.Center[i] + tr.Tangent[i] * along + tr.Normal[i] * (side * lateral);
                         }
-                        else if (oval)
+                        else if (scattered)
                         {
                             float along = (Rnd(seed, 211) - 0.5f) * 220f;
                             float lateral = wall + 70f + Rnd(seed + 31 + layer * 47, 271) * 420f;
@@ -1317,7 +1317,7 @@ namespace Kartamania
                             p = tr.Center[i] + tr.Normal[i] * (side * (wall + 95f + jitter));
                         }
                         if (Vector2.DistanceSquared(p, camPos) > cull2) continue;
-                        if (def.Forest || city || desert || def.DenseTrees || oval)
+                        if (def.Forest || city || desert || def.DenseTrees || scattered)
                         {
                             int nearTrack = tr.NearestAny(p);
                             float pad = desert ? 50f : (city ? 100f : 80f);
@@ -1325,7 +1325,7 @@ namespace Kartamania
                         }
                         float scale = desert
                             ? (0.72f + Rnd(seed + 5, 7) * 0.20f) * (layer == 1 ? 0.88f : 1f)
-                            : (0.85f + ((seed * 11) % 9) * 0.045f) * ((def.DenseTrees && layer == 1) ? 0.88f : ((def.Forest && layer == 1) ? 0.92f : ((city && layer == 1) ? 0.88f : ((oval && layer == 1) ? 0.90f : 1f))));
+                            : (0.85f + ((seed * 11) % 9) * 0.045f) * ((def.DenseTrees && layer == 1) ? 0.88f : ((def.Forest && layer == 1) ? 0.92f : ((city && layer == 1) ? 0.88f : ((scattered && layer == 1) ? 0.90f : 1f))));
                         if (def.Forest || def.DenseTrees)
                         {
                             float treeRadius = 78f * scale;
