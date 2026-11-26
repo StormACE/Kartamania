@@ -41,6 +41,7 @@ namespace Kartamania
         int sel;
         Race race;
         bool newRecord;
+        int countdownBeep;
 
         KeyboardState kb, pkb;
         GamePadState pad, ppad;
@@ -72,7 +73,7 @@ namespace Kartamania
             gfx.DeviceResetting += (s, e) => PixelFont.Reset();
             IsMouseVisible = false;
             Window.Title = "Kartamania";
-            Exiting += (s, e) => { MusicPlayer.Stop(); cfg?.Save(); };
+            Exiting += (s, e) => { MusicPlayer.Stop(); Sfx.Stop(); cfg?.Save(); };
         }
 
         // ================================================================== initialisation
@@ -170,6 +171,7 @@ namespace Kartamania
                 botFaces[i] = FaceLoader.MakePlaceholder(GraphicsDevice, KartColors[(i + 1) % KartColors.Length]);
 
             MusicPlayer.Load();
+            Sfx.Load();
 
             tracks = TrackLibrary.All().Select(d => new Track(d)).ToArray();
             cfg.Track = M.Wrap(cfg.Track, tracks.Length);
@@ -357,6 +359,9 @@ namespace Kartamania
             camPos = race.Player.Pos + race.Player.Heading * 260f;
             steerSmooth = 0f;
             newRecord = false;
+            countdownBeep = 4;
+            Sfx.StopEngine();
+            Sfx.StartEngine();
             MusicPlayer.PlayRandom();
             state = State.Racing;
         }
@@ -411,11 +416,25 @@ namespace Kartamania
             if (Press(Keys.Escape) || PadPress(Buttons.Start) || !IsActive)
             {
                 MusicPlayer.Pause();
+                Sfx.PauseEngine();
                 state = State.Paused;
                 return;
             }
 
             race.Update(dt, ReadInput(dt));
+
+            int count = (int)Math.Ceiling(race.Countdown);
+            if (race.Countdown > 0f && count < countdownBeep && count >= 1)
+            {
+                countdownBeep = count;
+                Sfx.Countdown(count);
+            }
+            else if (countdownBeep > 0 && race.Countdown <= 0f)
+            {
+                countdownBeep = 0;
+                Sfx.Go();
+            }
+            Sfx.UpdateEngine(race.Player.Vel.Length(), race.Player.BoostTimer > 0f);
 
             Kart p = race.Player;
             bool waitingView = !race.Over && (p.Finished || p.Eliminated);
@@ -444,6 +463,8 @@ namespace Kartamania
                 newRecord = false;
                 if (p.Finished && !p.Eliminated && p.Lap >= race.TotalLaps)
                     newRecord = cfg.RecordTime(race.Track.Def.Name, race.TotalLaps, p.FinishTime);
+                Sfx.Finish(!p.Eliminated && p.Place == 1);
+                Sfx.StopEngine();
                 MusicPlayer.Stop();
                 state = State.Results;
             }
@@ -454,10 +475,12 @@ namespace Kartamania
             if (Press(Keys.Escape) || PadPress(Buttons.Start) || Press(Keys.Enter))
             {
                 MusicPlayer.Resume();
+                Sfx.ResumeEngine();
                 state = State.Racing;
             }
             if (Press(Keys.M) || PadPress(Buttons.B))
             {
+                Sfx.StopEngine();
                 MusicPlayer.Stop();
                 state = State.Menu;
             }

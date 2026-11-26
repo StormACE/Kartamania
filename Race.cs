@@ -239,7 +239,7 @@ namespace Kartamania
             int old = k.Idx;
             int idx = Track.Nearest(k.Pos, old, 28);
             int d = idx - old;
-            if (d < -Track.N / 2) k.Lap++;
+            if (d < -Track.N / 2) { k.Lap++; if (k.IsPlayer) Sfx.Lap(); }
             else if (d > Track.N / 2) k.Lap--;
             k.Idx = idx;
 
@@ -255,6 +255,7 @@ namespace Kartamania
                 float vn = Vector2.Dot(k.Vel, n);
                 if (vn > 0f) k.Vel -= n * vn * 1.3f;
                 k.Speed *= Math.Max(0f, 1f - 3f * dt);
+                Sfx.Wall(k.IsPlayer);
             }
 
             UpdateProgress(k);
@@ -368,6 +369,8 @@ namespace Kartamania
 
         public void UseItem(Kart k)
         {
+            if (k.Item == ItemType.None) return;
+            Sfx.UseItem(k.Item);
             switch (k.Item)
             {
                 case ItemType.Missile:
@@ -422,6 +425,7 @@ namespace Kartamania
                     k.AiItemDelay = 1.5f + (float)rng.NextDouble() * 3f;
                     b.Respawn = 8f;
                     Burst(b.Pos, Color.Gold, 8, 160f);
+                    Sfx.Pickup(k.IsPlayer);
                     break;
                 }
             }
@@ -466,6 +470,7 @@ namespace Kartamania
                 if (dead)
                 {
                     Burst(m.Pos, Color.OrangeRed, 10, 260f);
+                    Sfx.Explosion(m.Owner != null && m.Owner.IsPlayer);
                     Missiles.RemoveAt(i);
                 }
             }
@@ -497,6 +502,7 @@ namespace Kartamania
                 if (dead)
                 {
                     Burst(m.Pos, Color.OrangeRed, 14, 300f);
+                    Sfx.Explosion(m.Owner != null && m.Owner.IsPlayer);
                     Mines.RemoveAt(i);
                 }
             }
@@ -512,12 +518,14 @@ namespace Kartamania
                 v.ShieldTimer = 0f;
                 v.Invuln = 0.8f;
                 Burst(v.Pos, Color.Cyan, 12, 220f);
+                Sfx.Shield(v.IsPlayer);
                 Say(v.Name + Loc.Get("MSG_BLOCKED") + weapon + "!");
                 return;
             }
 
             v.Hp--;
             Burst(v.Pos, Color.OrangeRed, 16, 300f);
+            Sfx.Explosion(v.IsPlayer);
 
             if (v.Hp <= 0)
             {
@@ -597,6 +605,7 @@ namespace Kartamania
                     float rel = Vector2.Dot(a.Vel - b.Vel, n);
                     if (rel > 0f)
                     {
+                        Sfx.KartCollision(rel / BaseSpeed, a.IsPlayer || b.IsPlayer);
                         Vector2 imp = n * (rel * 0.6f);
                         a.Vel -= imp;
                         b.Vel += imp;
@@ -642,6 +651,7 @@ namespace Kartamania
                     {
                         k.SpinTimer = 0.7f;
                         Burst(o, Color.Orange, 8, 160f);
+                        Sfx.ObstacleCollision(k.IsPlayer);
                     }
                 }
 
@@ -689,6 +699,7 @@ namespace Kartamania
             k.OffRoad = false;
             UpdateProgress(k);
             Burst(k.Pos, Color.Cyan, 12, 200f);
+            Sfx.Respawn(k.IsPlayer);
             Say(k.Name + Loc.Get("MSG_RESPAWN"));
         }
 
