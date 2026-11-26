@@ -303,7 +303,7 @@ namespace Kartamania
         static TrackDef VilleHuit() => new TrackDef
         {
             Name = "Huit de la Ville",
-            Scale = 1f,
+            Scale = 0.80f,
             Width = 280f,
             Theme = TrackTheme.City,
             StrictCourse = true,
