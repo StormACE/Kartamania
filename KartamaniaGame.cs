@@ -905,6 +905,43 @@ namespace Kartamania
             }
         }
 
+        void DrawSnowBank(Vector2 p, float size, int seed, Vector2 up, Vector2 right, float rot)
+        {
+            float H(int s, int m) => (Math.Abs(s * 9301 + 49297) % m) / (float)m;
+            Vector2 O(float x, float y) => p + right * x + up * y;
+            int shape = Math.Abs(seed) % 3;
+            float lean = (H(seed, 7) - 3f) * 0.16f;
+            float wide = shape == 2 ? 2.05f : (shape == 1 ? 1.15f : 1.55f);
+            float tall = shape == 1 ? 0.78f : (shape == 2 ? 0.42f : 0.60f);
+
+            Ellipse(O(0f, size * 0.18f), new Vector2(size * (wide + 0.15f), size * (tall + 0.06f)), rot + lean, new Color(152, 178, 198) * 0.55f);
+            Ellipse(O(0f, 0f), new Vector2(size * wide, size * tall), rot + lean, new Color(224, 237, 247));
+
+            if (shape == 0)
+            {
+                Ellipse(O(-size * 0.42f, -size * 0.14f), new Vector2(size * 0.95f, size * 0.48f), rot + lean - 0.22f, new Color(238, 246, 252));
+                Ellipse(O(size * 0.38f, -size * 0.18f), new Vector2(size * 1.05f, size * 0.46f), rot + lean + 0.20f, new Color(246, 251, 255));
+                Ellipse(O(-size * 0.08f, -size * 0.30f), new Vector2(size * 0.86f, size * 0.34f), rot + lean, Color.White);
+            }
+            else if (shape == 1)
+            {
+                Ellipse(O(-size * 0.22f, -size * 0.28f), new Vector2(size * 0.66f, size * 0.62f), rot + lean - 0.18f, new Color(238, 246, 252));
+                Ellipse(O(size * 0.26f, -size * 0.34f), new Vector2(size * 0.72f, size * 0.58f), rot + lean + 0.16f, new Color(246, 251, 255));
+                Ellipse(O(0f, -size * 0.48f), new Vector2(size * 0.52f, size * 0.34f), rot + lean, Color.White);
+            }
+            else
+            {
+                Ellipse(O(-size * 0.62f, -size * 0.10f), new Vector2(size * 0.92f, size * 0.34f), rot + lean - 0.12f, new Color(238, 246, 252));
+                Ellipse(O(size * 0.58f, -size * 0.12f), new Vector2(size * 0.96f, size * 0.32f), rot + lean + 0.14f, new Color(246, 251, 255));
+                Ellipse(O(0f, -size * 0.22f), new Vector2(size * 1.22f, size * 0.24f), rot + lean, Color.White);
+            }
+
+            Ellipse(O(size * 0.10f, size * 0.10f), new Vector2(size * (wide * 0.55f), size * 0.08f), rot + lean, new Color(190, 212, 230) * 0.85f);
+            Disc(O(-size * 0.48f, -size * 0.30f), size * 0.11f, Color.White);
+            Disc(O(size * 0.30f, -size * 0.36f), size * 0.08f, Color.White);
+            Disc(O(size * 0.62f, -size * 0.18f), size * 0.06f, Color.White * 0.9f);
+        }
+
         void DrawBuilding(Vector2 p, float scale, int seed, Vector2 up, Vector2 right, float rot)
         {
             Vector2 O(float x, float y) => p + right * (x * scale) + up * (y * scale);
@@ -992,6 +1029,22 @@ namespace Kartamania
             Disc(MapPoint(t, r, t.Center[t.StartIndex]), dot * 2.2f, Color.Red);   // ligne de départ
         }
 
+        void DrawSnowfall(int w, int h)
+        {
+            float H(int s, int m) => (Math.Abs(s * 9301 + 49297) % m) / (float)m;
+            for (int i = 0; i < 1000; i++)
+            {
+                float speed = 130f + H(i + 13, 211) * 130f;
+                float drift = 8f + H(i + 7, 97) * 28f;
+                float phase = i * 1.7f + H(i + 29, 1000) * 6.28f;
+                float sway = (float)Math.Sin(anim * (0.5f + H(i + 3, 7) * 0.5f) + phase) * 10f;
+                float sx = (H(i * 3 + 11, 1000) * w + anim * drift + sway + w) % w;
+                float sy = (H(i * 7 + 97, 1000) * (h + 240f) + anim * speed) % (h + 240f) - 120f;
+                float size = 3f + H(i + 31, 5) * 6f;
+                Disc(new Vector2(sx, sy), size, Color.White * (0.40f + H(i + 53, 5) * 0.40f));
+            }
+        }
+
         // ================================================================== dessin
 
         protected override void Draw(GameTime gameTime)
@@ -1013,6 +1066,7 @@ namespace Kartamania
             {
                 DrawWorld();
                 sb.Begin(samplerState: SamplerState.LinearClamp);
+                if (race.Track.Def.Name == "Étoile du Nord") DrawSnowfall(W, H);
                 DrawHud();
                 if (state == State.Racing) DrawPenalty();
                 if (state == State.Racing) DrawFinishBanner();
@@ -1166,6 +1220,25 @@ namespace Kartamania
             float rough = (tr.HalfWidth + Track.Shoulder + 10f) * 2f;
             for (int i = 0; i < n; i++)
                 if (Vector2.DistanceSquared(tr.Center[i], camPos) <= cull2) Disc(tr.Center[i], rough, def.Rough);
+
+            if (def.Name == "Étoile du Nord")
+            {
+                for (int i = 0; i < n; i += 10)
+                {
+                    for (int side = -1; side <= 1; side += 2)
+                    {
+                        int seed = i * 19 + (side + 1) * 31;
+                        float along = (Rnd(seed, 211) - 0.5f) * 160f;
+                        float lateral = tr.HalfWidth + Track.Shoulder + 70f + Rnd(seed + 7, 271) * 360f;
+                        Vector2 sp = tr.Center[i] + tr.Tangent[i] * along + tr.Normal[i] * (side * lateral);
+                        if (Vector2.DistanceSquared(sp, camPos) > cull2) continue;
+                        int nearSnow = tr.NearestAny(sp);
+                        if ((sp - tr.Center[nearSnow]).Length() < tr.HalfWidth + Track.Shoulder + 40f) continue;
+                        float sr = 70f + Rnd(seed + 19, 7) * 50f;
+                        DrawSnowBank(sp, sr, seed, treeUp, treeRight, treeRot);
+                    }
+                }
+            }
 
             for (int i = 0; i < n; i++)
             {
