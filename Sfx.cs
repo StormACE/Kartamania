@@ -11,10 +11,10 @@ namespace Kartamania
         static SoundEffect countLow, countMid, countHigh, go;
         static SoundEffect pickup, missile, mine, boost, shield;
         static SoundEffect hitKart, hitObstacle, wall, explosion, respawn, lap, win, lose;
-        static SoundEffect engine;
-        static SoundEffectInstance engineInstance;
+        static SoundEffect engine, screech;
+        static SoundEffectInstance engineInstance, screechInstance;
         static int lastImpact;
-        static bool engineRunning;
+        static bool engineRunning, screechRunning;
 
         public static void Load()
         {
@@ -48,6 +48,19 @@ namespace Kartamania
                         + 0.05f * (float)Math.Sin(2f * M.Pi * 550f * t);
                 v *= 0.86f + 0.14f * (float)Math.Sin(2f * M.Pi * 2f * t);
                 return v * 0.34f;
+            });
+
+            float filtered = 0f;
+            screech = Make(0.5f, (i, n) =>
+            {
+                float t = i / (float)Rate;
+                float noise = (float)(rng.NextDouble() * 2.0 - 1.0);
+                filtered += 0.62f * (noise - filtered);
+                float bright = noise - filtered * 0.75f;
+                float squeal = 0.12f * (float)Math.Sin(2f * M.Pi * 1650f * t)
+                             + 0.08f * (float)Math.Sin(2f * M.Pi * 2200f * t);
+                float mod = 0.78f + 0.22f * (float)Math.Sin(2f * M.Pi * 4f * t);
+                return (bright * 0.30f + squeal) * mod;
             });
         }
 
@@ -177,6 +190,13 @@ namespace Kartamania
             engineInstance.Volume = 0.18f;
             engineInstance.Play();
             engineRunning = true;
+
+            if (screech == null) return;
+            if (screechInstance == null) screechInstance = screech.CreateInstance();
+            screechInstance.IsLooped = true;
+            screechInstance.Volume = 0f;
+            screechInstance.Play();
+            screechRunning = true;
         }
 
         public static void UpdateEngine(float speed, bool boosting)
@@ -187,24 +207,41 @@ namespace Kartamania
             engineInstance.Volume = M.Clamp(0.18f + norm * 0.16f + (boosting ? 0.08f : 0f), 0f, 0.42f);
         }
 
+        public static void UpdateScreech(float intensity)
+        {
+            if (!screechRunning || screechInstance == null) return;
+            float amount = M.Clamp(intensity, 0f, 1f);
+            screechInstance.Pitch = M.Clamp(0.05f + amount * 0.18f, -1f, 1f);
+            screechInstance.Volume = M.Clamp(amount * 0.30f, 0f, 0.30f);
+        }
+
         public static void PauseEngine()
         {
             if (engineRunning && engineInstance != null && engineInstance.State == SoundState.Playing) engineInstance.Pause();
+            if (screechRunning && screechInstance != null && screechInstance.State == SoundState.Playing) screechInstance.Pause();
         }
 
         public static void ResumeEngine()
         {
             if (engineRunning && engineInstance != null && engineInstance.State == SoundState.Paused) engineInstance.Resume();
+            if (screechRunning && screechInstance != null && screechInstance.State == SoundState.Paused) screechInstance.Resume();
         }
 
         public static void StopEngine()
         {
             engineRunning = false;
+            screechRunning = false;
             if (engineInstance != null)
             {
                 engineInstance.Stop();
                 engineInstance.Dispose();
                 engineInstance = null;
+            }
+            if (screechInstance != null)
+            {
+                screechInstance.Stop();
+                screechInstance.Dispose();
+                screechInstance = null;
             }
         }
 

@@ -216,6 +216,13 @@ namespace Kartamania
             float turn = 2.7f * (1f - 0.3f * M.Clamp(Math.Abs(k.Speed) / (BaseSpeed * 1.2f), 0f, 1f));
             k.Angle += steer * turn * speedFactor * (k.Speed >= 0f ? 1f : -1f) * dt;
 
+            if (k.IsPlayer)
+            {
+                float speedN = M.Clamp((Math.Abs(k.Speed) - BaseSpeed * 0.35f) / (BaseSpeed * 0.5f), 0f, 1f);
+                float steerN = M.Clamp((Math.Abs(steer) - 0.5f) / 0.5f, 0f, 1f);
+                Sfx.UpdateScreech(speedN * steerN);
+            }
+
             if (spinning)
             {
                 k.SpinTimer -= dt;
