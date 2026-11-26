@@ -554,7 +554,7 @@ namespace Kartamania
                 if (b.Respawn > 0f) { b.Respawn -= dt; continue; }
                 foreach (Kart k in Karts)
                 {
-                    if (k.Eliminated || k.Finished || k.Item != ItemType.None) continue;
+                    if (k.Eliminated || k.Finished || k.OutsideCourse || k.Item != ItemType.None) continue;
                     if (Vector2.DistanceSquared(k.Pos, b.Pos) > rr) continue;
                     k.Item = RollItem();
                     k.AiItemDelay = 1.5f + (float)rng.NextDouble() * 3f;
