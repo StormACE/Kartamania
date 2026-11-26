@@ -65,6 +65,8 @@ namespace Kartamania
             { "CONTROLS", new[] { "COMMANDES", "CONTROLS" } },
             { "RESULT_ELIMINATED", new[] { "ELIMINE!", "ELIMINATED!" } },
             { "RESULT_VICTORY", new[] { "VICTOIRE!", "VICTORY!" } },
+            { "RESULT_WIN", new[] { "GAGNE!", "WINNER!" } },
+            { "RESULT_POSITION", new[] { "PLACE ", "POSITION " } },
             { "RESULT_FINISHED", new[] { "COURSE TERMINEE", "RACE FINISHED" } },
             { "BEST_TIME", new[] { "MEILLEUR TEMPS ", "BEST TIME " } },
             { "BEST_LAPS", new[] { " TOURS : ", " LAPS: " } },

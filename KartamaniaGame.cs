@@ -622,6 +622,7 @@ namespace Kartamania
                 DrawWorld();
                 sb.Begin(samplerState: SamplerState.LinearClamp);
                 DrawHud();
+                if (state == State.Racing) DrawFinishBanner();
                 if (state == State.Paused) DrawPause();
                 if (state == State.Results) DrawResults();
                 sb.End();
@@ -1036,16 +1037,33 @@ namespace Kartamania
                 Text(opts[i], W * 0.5f, oy + i * T(4) * 8f, T(4), Color.White, true);
         }
 
+        void DrawFinishBanner()
+        {
+            Kart p = race.Player;
+            if (!p.Finished || p.Eliminated) return;
+
+            float age = race.Time - p.FinishTime;
+            if (age < 0f || age > 3.2f) return;
+
+            bool won = p.Place == 1;
+            string title = won ? Loc.Get("RESULT_WIN") : Loc.Get("RESULT_POSITION") + Loc.Ordinal(p.Place);
+            float fade = M.Clamp(Math.Min(age * 4f, (3.2f - age) * 2f), 0f, 1f);
+            Color color = (won ? new Color(255, 215, 60) : Color.White) * fade;
+
+            Rect(0, H * 0.28f, W, H * 0.18f, Color.Black * 0.55f * fade);
+            Text(title, W * 0.5f, H * 0.30f, T(15), color, true);
+        }
+
         void DrawResults()
         {
             int w = W, h = H;
             Rect(0, 0, w, h, Color.Black * 0.68f);
             Kart p = race.Player;
 
-            string title = p.Eliminated ? Loc.Get("RESULT_ELIMINATED")
-                : (p.Place == 1 ? Loc.Get("RESULT_VICTORY") : Loc.Get("RESULT_FINISHED"));
-            Color tc = p.Eliminated ? Color.OrangeRed : (p.Place == 1 ? new Color(255, 215, 60) : Color.White);
-            Text(title, w * 0.5f, h * 0.04f, T(11), tc, true);
+            bool won = !p.Eliminated && p.Place == 1;
+            string title = won ? Loc.Get("RESULT_WIN") : Loc.Get("RESULT_POSITION") + Loc.Ordinal(p.Place);
+            Color tc = won ? new Color(255, 215, 60) : (p.Eliminated ? Color.OrangeRed : Color.White);
+            Text(title, w * 0.5f, h * 0.035f, T(14), tc, true);
 
             float best = cfg.GetBestTime(race.Track.Def.Name, race.TotalLaps);
             string bestLine = Loc.Get("BEST_TIME") + race.TotalLaps + Loc.Get("BEST_LAPS") + (best > 0f ? FormatTime(best) : "--:--.-");
