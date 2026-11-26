@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -26,7 +27,7 @@ namespace Kartamania
 
         readonly GraphicsDeviceManager gfx;
         SpriteBatch sb;
-        Texture2D pixel, disc, heart;
+        Texture2D pixel, disc, heart, menuKart;
 
         GameSettings cfg;
         readonly List<Point> resolutions = new List<Point>();
@@ -200,6 +201,13 @@ namespace Kartamania
 
             disc = MakeDisc(128);
             heart = MakeHeart(128);
+
+            string kartPath = Path.Combine(AppContext.BaseDirectory, "Images", "kart.png");
+            if (File.Exists(kartPath))
+            {
+                using (var fs = File.OpenRead(kartPath))
+                    menuKart = Texture2D.FromStream(GraphicsDevice, fs);
+            }
 
             faces = FaceLoader.LoadAll(GraphicsDevice, out faceWarning);
             hasPhotos = faces.Count > 0;
@@ -787,11 +795,22 @@ namespace Kartamania
             }
 
             float lx = w * 0.06f;
+            float subY = h * 0.12f + T(20) * 6.5f;
             Text("KARTAMANIA", lx, h * 0.12f, T(20), new Color(255, 215, 60));
-            Text(Loc.Get("SUBTITLE"), lx, h * 0.12f + T(20) * 6.5f, T(3), Color.White * 0.85f);
+            Text(Loc.Get("SUBTITLE"), lx, subY, T(3), Color.White * 0.85f);
+
+            float kartY = 0f, kartH = 0f;
+            if (menuKart != null)
+            {
+                float kartW = T(210f);
+                kartH = kartW * menuKart.Height / menuKart.Width;
+                kartY = subY + PixelFont.LineHeight(T(3)) + T(10);
+                sb.Draw(menuKart, new Vector2(lx, kartY), null, Color.White, 0f, Vector2.Zero,
+                        new Vector2(kartW / menuKart.Width, kartH / menuKart.Height), SpriteEffects.None, 0f);
+            }
 
             int ts = T(4);
-            float y = h * 0.34f;
+            float y = menuKart != null ? kartY + kartH + T(18) : h * 0.34f;
             float lineH = ts * 9f;
             for (int i = 0; i < Rows.Length; i++)
             {
