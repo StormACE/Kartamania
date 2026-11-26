@@ -315,25 +315,43 @@ namespace Kartamania
             }
 
             int idx = junction ? Track.NearestAny(k.Pos) : Track.Nearest(k.Pos, old, 10);
+            bool switched = false;
+            if (junction && Track.LoopDistance(old, idx) > Track.N / 8)
+            {
+                Vector2 dir = k.Vel.LengthSquared() > 1f ? k.Vel : Track.Tangent[old];
+                float oldDot = Math.Abs(Vector2.Dot(dir, Track.Tangent[old]));
+                float newDot = Math.Abs(Vector2.Dot(dir, Track.Tangent[idx]));
+                if (newDot > oldDot) switched = true;
+                else idx = Track.Nearest(k.Pos, old, 10);
+            }
             k.Idx = idx;
 
             Vector2 off = k.Pos - Track.Center[idx];
             float dist = off.Length();
 
-            if (junction && Track.LoopDistance(old, idx) > Track.N / 8)
+            if (switched && !k.WrongBranch && !k.OutsideCourse)
             {
-                if (k.WrongBranch) k.WrongBranch = false;
-                else if (!k.OutsideCourse)
-                {
-                    k.WrongBranch = true;
-                    k.WrongBranchPos = k.Pos;
-                }
+                k.WrongBranch = true;
+                k.WrongBranchPos = k.Pos;
             }
             if (k.WrongBranch && !k.OutsideCourse &&
                 (k.Pos - k.WrongBranchPos).Length() > Track.HalfWidth + Track.Shoulder)
             {
                 k.WrongBranch = false;
                 PenalizeShortcut(k);
+            }
+
+            if (!junction)
+            {
+                int closest = Track.NearestAny(k.Pos);
+                Vector2 closestOff = k.Pos - Track.Center[closest];
+                float closestDist = closestOff.Length();
+                if (closestDist < dist)
+                {
+                    idx = closest;
+                    off = closestOff;
+                    dist = closestDist;
+                }
             }
 
             k.OffRoad = dist > Track.HalfWidth && !junction;
