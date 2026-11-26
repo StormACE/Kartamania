@@ -133,11 +133,40 @@ namespace Kartamania
 
         void ApplyGraphics()
         {
-            gfx.PreferredBackBufferWidth = resolutions[resIdx].X;
-            gfx.PreferredBackBufferHeight = resolutions[resIdx].Y;
+            bool borderless = cfg.DisplayMode == 1 && !cfg.Fullscreen;
+            DisplayMode desktop = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+            int rw = cfg.Fullscreen || borderless ? desktop.Width : resolutions[resIdx].X;
+            int rh = cfg.Fullscreen || borderless ? desktop.Height : resolutions[resIdx].Y;
+            int workW, workH;
+            bool hasWork = DisplayRefresh.TryGetWorkArea(out workW, out workH);
+
+            if (!cfg.Fullscreen && !borderless && hasWork)
+            {
+                float scale = Math.Min((workW - 48f) / rw, (workH - 96f) / rh);
+                scale = M.Clamp(scale, 0.25f, 1f);
+                rw = Math.Max(640, (int)Math.Round(rw * scale));
+                rh = Math.Max(360, (int)Math.Round(rh * scale));
+            }
+
+            gfx.PreferredBackBufferWidth = rw;
+            gfx.PreferredBackBufferHeight = rh;
             gfx.IsFullScreen = cfg.Fullscreen;
             gfx.SynchronizeWithVerticalRetrace = cfg.VSync;
             gfx.ApplyChanges();
+
+            if (!cfg.Fullscreen) Window.IsBorderless = borderless;
+            if (borderless)
+            {
+                try { Window.Position = Point.Zero; } catch { }
+            }
+            else if (!cfg.Fullscreen && hasWork)
+            {
+                try
+                {
+                    Window.Position = new Point(Math.Max(0, (workW - rw) / 2), Math.Max(0, (workH - rh) / 2));
+                }
+                catch { }
+            }
 
             int cap = GameSettings.FpsCaps[cfg.FpsIndex];
             if (cap == 0 && resIdx >= 0 && resIdx < refreshRates.Count) cap = refreshRates[resIdx];
@@ -150,6 +179,12 @@ namespace Kartamania
             {
                 IsFixedTimeStep = false;
             }
+        }
+
+        void CycleDisplay(int step)
+        {
+            cfg.DisplayMode = M.Wrap(cfg.DisplayMode + step, 3);
+            ApplyGraphics();
         }
 
         protected override void LoadContent()
@@ -171,6 +206,7 @@ namespace Kartamania
                 botFaces[i] = FaceLoader.MakePlaceholder(GraphicsDevice, KartColors[(i + 1) % KartColors.Length]);
 
             MusicPlayer.Load();
+            MusicPlayer.PlayMenu();
             Sfx.Load();
 
             tracks = TrackLibrary.All().Select(d => new Track(d)).ToArray();
@@ -300,7 +336,7 @@ namespace Kartamania
                     }
                     break;
                 case Row.Display:
-                    if (dirEdge != 0 || enter) { cfg.Fullscreen = !cfg.Fullscreen; ApplyGraphics(); }
+                    if (dirEdge != 0 || enter) CycleDisplay(dirEdge < 0 ? -1 : 1);
                     break;
                 case Row.VSync:
                     if (dirEdge != 0 || enter) { cfg.VSync = !cfg.VSync; ApplyGraphics(); }
@@ -326,7 +362,7 @@ namespace Kartamania
             }
 
             if (Press(Keys.Escape)) { cfg.Save(); Exit(); }
-            if (PadPress(Buttons.Y)) { cfg.Fullscreen = !cfg.Fullscreen; ApplyGraphics(); }
+            if (PadPress(Buttons.Y)) CycleDisplay(1);
         }
 
         void StartRace()
@@ -481,7 +517,7 @@ namespace Kartamania
             if (Press(Keys.M) || PadPress(Buttons.B))
             {
                 Sfx.StopEngine();
-                MusicPlayer.Stop();
+                MusicPlayer.PlayMenu();
                 state = State.Menu;
             }
             if (Press(Keys.R) || PadPress(Buttons.Y)) StartRace();
@@ -489,7 +525,11 @@ namespace Kartamania
 
         void UpdateResults()
         {
-            if (Press(Keys.Enter) || PadPress(Buttons.A) || Press(Keys.Escape)) state = State.Menu;
+            if (Press(Keys.Enter) || PadPress(Buttons.A) || Press(Keys.Escape))
+            {
+                MusicPlayer.PlayMenu();
+                state = State.Menu;
+            }
             if (Press(Keys.R) || PadPress(Buttons.Y)) StartRace();
         }
 
@@ -644,7 +684,7 @@ namespace Kartamania
                 case Row.Laps: return Loc.Get("LABEL_LAPS") + ": < " + cfg.Laps + " >";
                 case Row.Pilots: return Loc.Get("LABEL_PILOTS") + ": < " + cfg.RacerCount + " >";
                 case Row.Resolution: return "RESOLUTION: < " + resolutions[resIdx].X + "X" + resolutions[resIdx].Y + " >";
-                case Row.Display: return Loc.Get("LABEL_DISPLAY") + ": < " + Loc.Get(cfg.Fullscreen ? "FULLSCREEN" : "WINDOW") + " >";
+                case Row.Display: return Loc.Get("LABEL_DISPLAY") + ": < " + Loc.Get(cfg.DisplayMode == 2 ? "FULLSCREEN" : cfg.DisplayMode == 1 ? "BORDERLESS" : "WINDOW") + " >";
                 case Row.VSync: return "VSYNC: < " + Loc.Get(cfg.VSync ? "YES" : "NO") + " >";
                 case Row.Fps:
                     int cap = GameSettings.FpsCaps[cfg.FpsIndex];

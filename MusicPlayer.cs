@@ -7,12 +7,13 @@ namespace Kartamania
 {
     public static class MusicPlayer
     {
+        const string MenuFile = "MetalRoll.ogg";
         static readonly string[] Extensions = { ".wav", ".ogg" };
         static readonly List<string> files = new List<string>();
         static readonly Random rng = new Random();
         static string lastPath = "";
-        static SoundEffect effect;
-        static SoundEffectInstance instance;
+        static SoundEffect effect, menuEffect;
+        static SoundEffectInstance instance, menuInstance;
 
         public static string FolderPath => Path.Combine(AppContext.BaseDirectory, "Music");
 
@@ -37,9 +38,31 @@ namespace Kartamania
             }
         }
 
+        public static void PlayMenu()
+        {
+            StopRace();
+            StopMenu();
+            string path = files.Find(f => string.Equals(Path.GetFileName(f), MenuFile, StringComparison.OrdinalIgnoreCase));
+            if (path == null) return;
+
+            try
+            {
+                menuEffect = AudioLoader.FromFile(path);
+                menuInstance = menuEffect.CreateInstance();
+                menuInstance.IsLooped = true;
+                menuInstance.Volume = 0.45f;
+                menuInstance.Play();
+            }
+            catch
+            {
+                StopMenu();
+            }
+        }
+
         public static void PlayRandom()
         {
-            Stop();
+            StopRace();
+            StopMenu();
             if (files.Count == 0) return;
 
             int pick = rng.Next(files.Count);
@@ -49,7 +72,7 @@ namespace Kartamania
 
             try
             {
-                effect = SoundEffect.FromFile(path);
+                effect = AudioLoader.FromFile(path);
                 instance = effect.CreateInstance();
                 instance.IsLooped = true;
                 instance.Volume = 0.55f;
@@ -57,8 +80,7 @@ namespace Kartamania
             }
             catch
             {
-                if (instance != null) { instance.Dispose(); instance = null; }
-                if (effect != null) { effect.Dispose(); effect = null; }
+                StopRace();
             }
         }
 
@@ -72,7 +94,7 @@ namespace Kartamania
             if (instance != null && instance.State == SoundState.Paused) instance.Resume();
         }
 
-        public static void Stop()
+        public static void StopRace()
         {
             if (instance != null)
             {
@@ -85,6 +107,27 @@ namespace Kartamania
                 effect.Dispose();
                 effect = null;
             }
+        }
+
+        public static void StopMenu()
+        {
+            if (menuInstance != null)
+            {
+                menuInstance.Stop();
+                menuInstance.Dispose();
+                menuInstance = null;
+            }
+            if (menuEffect != null)
+            {
+                menuEffect.Dispose();
+                menuEffect = null;
+            }
+        }
+
+        public static void Stop()
+        {
+            StopRace();
+            StopMenu();
         }
     }
 }

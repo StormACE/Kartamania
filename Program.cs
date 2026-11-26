@@ -1,13 +1,35 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace Kartamania
 {
     public static class Program
     {
+        [DllImport("user32.dll")]
+        static extern bool SetProcessDpiAwarenessContext(IntPtr value);
+
+        [DllImport("user32.dll")]
+        static extern bool SetProcessDPIAware();
+
+        static void EnableDpiAwareness()
+        {
+            try
+            {
+                if (SetProcessDpiAwarenessContext(new IntPtr(-4))) return;
+            }
+            catch { }
+            try
+            {
+                SetProcessDPIAware();
+            }
+            catch { }
+        }
+
         [STAThread]
         private static void Main()
         {
+            EnableDpiAwareness();
             try
             {
                 using (var game = new KartamaniaGame())

@@ -12,6 +12,12 @@ namespace Kartamania
 
         public int Width = 1920, Height = 1080;
         public bool Fullscreen = true;
+        public bool Borderless;
+        public int DisplayMode
+        {
+            get { return Fullscreen ? 2 : (Borderless ? 1 : 0); }
+            set { Fullscreen = value == 2; Borderless = value == 1; }
+        }
         public bool VSync = false;
         public int FpsIndex = 1;            // 120 FPS par défaut
         public int Track, Player, Difficulty = 1, Laps = 3, RacerCount = 6, Language;
@@ -57,6 +63,8 @@ namespace Kartamania
                         case "width": if (isInt) s.Width = n; break;
                         case "height": if (isInt) s.Height = n; break;
                         case "fullscreen": s.Fullscreen = val == "1"; break;
+                        case "borderless": s.Borderless = val == "1"; break;
+                        case "display": if (isInt) s.DisplayMode = Math.Max(0, Math.Min(2, n)); break;
                         case "vsync": s.VSync = val == "1"; break;
                         case "fps": if (isInt) s.FpsIndex = Math.Max(0, Math.Min(FpsCaps.Length - 1, n)); break;
                         case "track": if (isInt) s.Track = Math.Max(0, n); break;
@@ -92,7 +100,8 @@ namespace Kartamania
                 var lines = new List<string>
                 {
                     "width=" + Width, "height=" + Height,
-                    "fullscreen=" + (Fullscreen ? 1 : 0), "vsync=" + (VSync ? 1 : 0), "fps=" + FpsIndex,
+                    "display=" + DisplayMode, "fullscreen=" + (Fullscreen ? 1 : 0), "borderless=" + (Borderless ? 1 : 0),
+                    "vsync=" + (VSync ? 1 : 0), "fps=" + FpsIndex,
                     "track=" + Track, "player=" + Player, "difficulty=" + Difficulty, "laps=" + Laps,
                     "pilots=" + RacerCount, "language=" + Language,
                 };

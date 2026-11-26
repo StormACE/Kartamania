@@ -1,4 +1,8 @@
 C:\Users\krypt\Documents\GitHub\Kartamania\bin\x64\Release\net10.0\Faces\LISEZMOI.txt
+C:\Users\krypt\Documents\GitHub\Kartamania\bin\x64\Release\net10.0\Music\Happy Sunday.ogg
+C:\Users\krypt\Documents\GitHub\Kartamania\bin\x64\Release\net10.0\Music\Metal n Roll Song.ogg
+C:\Users\krypt\Documents\GitHub\Kartamania\bin\x64\Release\net10.0\Music\Midnight Owl.ogg
+C:\Users\krypt\Documents\GitHub\Kartamania\bin\x64\Release\net10.0\Music\UndertheStars.ogg
 C:\Users\krypt\Documents\GitHub\Kartamania\bin\x64\Release\net10.0\Kartamania.deps.json
 C:\Users\krypt\Documents\GitHub\Kartamania\bin\x64\Release\net10.0\Kartamania.runtimeconfig.json
 C:\Users\krypt\Documents\GitHub\Kartamania\bin\x64\Release\net10.0\Kartamania.dll

@@ -13,9 +13,19 @@ namespace Kartamania
         const int HeightOffset = 176;
         const int FrequencyOffset = 184;
         const int DevModeSize = 220;
+        const int SpiGetWorkArea = 0x0030;
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct Rect
+        {
+            public int Left, Top, Right, Bottom;
+        }
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         static extern bool EnumDisplaySettings(string deviceName, int modeNum, byte[] devMode);
+
+        [DllImport("user32.dll")]
+        static extern bool SystemParametersInfo(int action, int param, out Rect rect, int update);
 
         static bool Read(int mode, out int width, out int height, out int frequency)
         {
@@ -40,6 +50,23 @@ namespace Kartamania
         {
             int w, h, r;
             return Read(CurrentSettings, out w, out h, out r) ? r : 0;
+        }
+
+        public static bool TryGetWorkArea(out int width, out int height)
+        {
+            width = height = 0;
+            try
+            {
+                Rect rect;
+                if (!SystemParametersInfo(SpiGetWorkArea, 0, out rect, 0)) return false;
+                width = Math.Max(1, rect.Right - rect.Left);
+                height = Math.Max(1, rect.Bottom - rect.Top);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public static Dictionary<Point, int> AllModes()
