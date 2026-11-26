@@ -1142,17 +1142,27 @@ namespace Kartamania
         void DrawFinishBanner()
         {
             Kart p = race.Player;
-            if (!p.Finished || p.Eliminated) return;
+            if (p.Eliminated)
+            {
+                float age = race.Time - p.ElimTime;
+                if (age < 0f || age > 3.2f) return;
+                float fade = M.Clamp(Math.Min(age * 4f, (3.2f - age) * 2f), 0f, 1f);
+                Rect(0, H * 0.28f, W, H * 0.18f, Color.Black * 0.55f * fade);
+                Text(Loc.Get("RESULT_ELIMINATED"), W * 0.5f, H * 0.30f, T(15), Color.OrangeRed * fade, true);
+                return;
+            }
 
-            float age = race.Time - p.FinishTime;
-            if (age < 0f || age > 3.2f) return;
+            if (!p.Finished) return;
+
+            float finishAge = race.Time - p.FinishTime;
+            if (finishAge < 0f || finishAge > 3.2f) return;
 
             bool won = p.Place == 1;
             string title = won ? Loc.Get("RESULT_WIN") : Loc.Get("RESULT_POSITION") + Loc.Ordinal(p.Place);
-            float fade = M.Clamp(Math.Min(age * 4f, (3.2f - age) * 2f), 0f, 1f);
-            Color color = (won ? new Color(255, 215, 60) : Color.White) * fade;
+            float finishFade = M.Clamp(Math.Min(finishAge * 4f, (3.2f - finishAge) * 2f), 0f, 1f);
+            Color color = (won ? new Color(255, 215, 60) : Color.White) * finishFade;
 
-            Rect(0, H * 0.28f, W, H * 0.18f, Color.Black * 0.55f * fade);
+            Rect(0, H * 0.28f, W, H * 0.18f, Color.Black * 0.55f * finishFade);
             Text(title, W * 0.5f, H * 0.30f, T(15), color, true);
         }
 
@@ -1163,8 +1173,10 @@ namespace Kartamania
             Kart p = race.Player;
 
             bool won = !p.Eliminated && p.Place == 1;
-            string title = won ? Loc.Get("RESULT_WIN") : Loc.Get("RESULT_POSITION") + Loc.Ordinal(p.Place);
-            Color tc = won ? new Color(255, 215, 60) : (p.Eliminated ? Color.OrangeRed : Color.White);
+            string title = p.Eliminated ? Loc.Get("RESULT_ELIMINATED")
+                          : won ? Loc.Get("RESULT_WIN")
+                          : Loc.Get("RESULT_POSITION") + Loc.Ordinal(p.Place);
+            Color tc = p.Eliminated ? Color.OrangeRed : (won ? new Color(255, 215, 60) : Color.White);
             Text(title, w * 0.5f, h * 0.035f, T(14), tc, true);
 
             float best = cfg.GetBestTime(race.Track.Def.Name, race.TotalLaps);
