@@ -927,12 +927,13 @@ namespace Kartamania
                 }
         }
 
-        void DrawLamp(Vector2 p, float scale, Vector2 up, Vector2 right, float rot)
+        void DrawLamp(Vector2 p, float scale, Vector2 up, Vector2 right, float rot, bool flip = false)
         {
-            Vector2 O(float x, float y) => p + right * (x * scale) + up * (y * scale);
-            RectC(O(0f, 34f), new Vector2(6f, 68f) * scale, rot, new Color(40, 44, 50));
-            RectC(O(12f, 66f), new Vector2(26f, 5f) * scale, rot, new Color(40, 44, 50));
-            Disc(O(24f, 62f), 18f * scale, new Color(255, 224, 150));
+            Vector2 arm = flip ? -right : right;
+            Color poleColor = new Color(40, 44, 50);
+            RectC(p + up * (34f * scale), new Vector2(6f, 68f) * scale, rot, poleColor);
+            RectC(p + up * (66f * scale) + arm * (13f * scale), new Vector2(26f, 5f) * scale, rot, poleColor);
+            Disc(p + up * (62f * scale) + arm * (24f * scale), 18f * scale, new Color(255, 224, 150));
         }
 
         void Face(Texture2D tex, Vector2 center, float diameter, float rotation, Color tint) =>
@@ -1235,6 +1236,7 @@ namespace Kartamania
 
             float Rnd(int s, int m) => (Math.Abs(s * 9301 + 49297) % m) / (float)m;
             var chaletSpots = new List<(Vector2 Pos, float Radius, float Scale, int Seed)>();
+            var citySpots = new List<(Vector2 Pos, float Radius)>();
             if (def.Forest || def.DenseTrees)
             {
                 int chaletStep = def.Forest ? 40 : 80;
@@ -1266,8 +1268,8 @@ namespace Kartamania
                 }
             }
 
-            int treeStep = def.Forest ? 2 : (desert ? 7 : (def.DenseTrees ? 5 : 8));
-            int treeLayers = def.Forest || desert || def.DenseTrees ? 2 : 1;
+            int treeStep = def.Forest ? 2 : (city ? 3 : (desert ? 7 : (def.DenseTrees ? 5 : 8)));
+            int treeLayers = def.Forest || city || desert || def.DenseTrees ? 2 : 1;
             for (int i = 0; i < n; i += treeStep)
             {
                 if (city && tr.IsNearCrossing(i, 14)) continue;
@@ -1277,7 +1279,13 @@ namespace Kartamania
                     {
                         int seed = i * 7 + (side + 1) * 13 + layer * 29;
                         Vector2 p;
-                        if (def.Forest)
+                        if (city)
+                        {
+                            float along = (Rnd(seed, 211) - 0.5f) * 240f;
+                            float lateral = wall + 150f + Rnd(seed + 31 + layer * 47, 271) * 380f;
+                            p = tr.Center[i] + tr.Tangent[i] * along + tr.Normal[i] * (side * lateral);
+                        }
+                        else if (def.Forest)
                         {
                             float along = (Rnd(seed, 211) - 0.5f) * 260f;
                             float lateral = wall + 60f + Rnd(seed + 31 + layer * 47, 271) * 700f;
@@ -1299,17 +1307,18 @@ namespace Kartamania
                         else
                         {
                             float jitter = ((seed * 37) % 17 - 8) * 5f;
-                            p = tr.Center[i] + tr.Normal[i] * (side * (wall + (city ? 160f : 95f) + jitter));
+                            p = tr.Center[i] + tr.Normal[i] * (side * (wall + 95f + jitter));
                         }
                         if (Vector2.DistanceSquared(p, camPos) > cull2) continue;
-                        if (def.Forest || desert || def.DenseTrees)
+                        if (def.Forest || city || desert || def.DenseTrees)
                         {
                             int nearTrack = tr.NearestAny(p);
-                            if ((p - tr.Center[nearTrack]).Length() < wall + (desert ? 50f : 80f)) continue;
+                            float pad = desert ? 50f : (city ? 100f : 80f);
+                            if ((p - tr.Center[nearTrack]).Length() < wall + pad) continue;
                         }
                         float scale = desert
                             ? (0.72f + Rnd(seed + 5, 7) * 0.20f) * (layer == 1 ? 0.88f : 1f)
-                            : (0.85f + ((seed * 11) % 9) * 0.045f) * ((def.DenseTrees && layer == 1) ? 0.88f : (def.Forest && layer == 1 ? 0.92f : 1f));
+                            : (0.85f + ((seed * 11) % 9) * 0.045f) * ((def.DenseTrees && layer == 1) ? 0.88f : ((def.Forest && layer == 1) ? 0.92f : ((city && layer == 1) ? 0.88f : 1f)));
                         if (def.Forest || def.DenseTrees)
                         {
                             float treeRadius = 78f * scale;
@@ -1322,8 +1331,20 @@ namespace Kartamania
                         }
                         if (city)
                         {
+                            if (layer == 0 && i % 32 == 0)
+                            {
+                                Vector2 lampPos = tr.Center[i] + tr.Normal[i] * (side * (wall + 80f));
+                                DrawLamp(lampPos, scale, treeUp, treeRight, treeRot, side > 0);
+                            }
+                            float clear = 95f * scale;
+                            bool overlaps = false;
+                            foreach (var b in citySpots)
+                            {
+                                if ((p - b.Pos).Length() < b.Radius + clear) { overlaps = true; break; }
+                            }
+                            if (overlaps) continue;
+                            citySpots.Add((p, clear));
                             DrawBuilding(p, scale, seed, treeUp, treeRight, treeRot);
-                            if (i % 32 == 0) DrawLamp(p - tr.Normal[i] * (side * 70f), scale, treeUp, treeRight, treeRot);
                         }
                         else DrawTree(p, scale, def.Theme, treeUp, treeRight, treeRot, seed + layer * 17);
                     }
