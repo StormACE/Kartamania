@@ -1201,7 +1201,7 @@ namespace Kartamania
                 int ts = T(5);
                 int lh = PixelFont.LineHeight(ts);
                 float gap = 6f * u;
-                Text(Loc.Get("HUD_LAP") + Math.Min(Math.Max(p.Lap + 1, 1), race.TotalLaps) + "/" + race.TotalLaps, m, m, ts, Color.White);
+                Text(Loc.Get("HUD_LAP") + Math.Min(Math.Max(view.Lap + 1, 1), race.TotalLaps) + "/" + race.TotalLaps, m, m, ts, Color.White);
                 float posY = m + lh + gap;
                 Text("POS " + view.Place + "/" + race.Karts.Count, m, posY, ts, new Color(255, 215, 60));
                 int ls = T(2.5f);
@@ -1209,7 +1209,7 @@ namespace Kartamania
                 Text(Loc.Get("HUD_HEALTH"), m, lblY, ls, Color.White * 0.85f);
                 float dotY = lblY + PixelFont.LineHeight(ls) + 4f * u + 13f * u;
                 for (int i = 0; i < Kart.MaxHp; i++)
-                    Disc(new Vector2(m + 14f * u + i * 34f * u, dotY), 26f * u, i < p.Hp ? Color.Red : Color.White * 0.25f);
+                    Disc(new Vector2(m + 14f * u + i * 34f * u, dotY), 26f * u, i < view.Hp ? Color.Red : Color.White * 0.25f);
             }
 
             // Haut centre : arme en main.
@@ -1223,7 +1223,7 @@ namespace Kartamania
                 Rect(cx + bs * 0.5f - 3f * u, m, 3f * u, bs, Color.White);
                 Vector2 ic = new Vector2(cx, m + bs * 0.42f);
                 string name = "";
-                switch (p.Item)
+                switch (view.Item)
                 {
                     case ItemType.Missile: Disc(ic, 50f * u, new Color(220, 40, 40)); Disc(ic + new Vector2(0f, -22f * u), 22f * u, Color.White); name = "MISSILE"; break;
                     case ItemType.Mine: Disc(ic, 54f * u, Color.Black); Disc(ic, 22f * u, Color.Red); name = "MINE"; break;
@@ -1247,7 +1247,7 @@ namespace Kartamania
             }
 
             // Bas droite : vitesse.
-            string spd = (int)(p.Vel.Length() * 0.5f) + " KM/H";
+            string spd = (int)(view.Vel.Length() * 0.5f) + " KM/H";
             Text(spd, w - m - PixelFont.Measure(spd, T(5)), h - m - T(5) * 5f, T(5), Color.White);
 
             // Bas gauche : mini-carte.
