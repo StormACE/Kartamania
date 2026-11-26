@@ -90,6 +90,7 @@ namespace Kartamania
             { "Rallye du Sous-sol", "Basement Rally" },
             { "Desert du Sud", "Southern Desert" },
             { "Etoile du Nord", "Northern Star" },
+            { "Huit de la Ville", "City Figure Eight" },
         };
 
         public static GameLanguage Language => language;

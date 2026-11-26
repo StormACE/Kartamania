@@ -27,8 +27,8 @@ namespace Kartamania
         public const float ObstacleRadius = 26f;
         public const float BoxRadius = 30f;
         public const float CollisionSlowFactor = 0.5f;
-        public const float KartSlowDuration = 2f;
-        public const float ObstacleSlowDuration = 3f;
+        public const float KartSlowDuration = 1f;
+        public const float ObstacleSlowDuration = 1f;
         public const float RearPushMin = 240f;
         public const float RearPushMax = 520f;
         public const float RearPushScale = 0.5625f;
@@ -89,9 +89,13 @@ namespace Kartamania
                 k.Lap = -1;
                 k.Pos = track.Center[idx] + track.Normal[idx] * (side * GridSideOffset);
                 k.Angle = M.Angle(track.Tangent[idx]);
-                k.AiLane = ((float)rng.NextDouble() * 2f - 1f) * 80f;
+                float laneLimit = track.Def.StrictCourse ? track.Def.LaneLimit : 80f;
+                k.AiLane = ((float)rng.NextDouble() * 2f - 1f) * laneLimit;
                 k.AiSkill = 0.94f + (float)rng.NextDouble() * 0.06f;
                 k.AiItemDelay = 1f;
+                k.NextGate = 0;
+                k.LastGateIndex = track.Gates.Length > 0 ? track.Gates[track.Gates.Length - 1].Index : idx;
+                k.PrevPos = k.Pos;
                 Karts.Add(k);
                 if (k.IsPlayer) Player = k;
             }
@@ -238,12 +242,20 @@ namespace Kartamania
 
             Vector2 desired = M.Dir(k.Angle) * k.Speed;
             k.Vel = Vector2.Lerp(k.Vel, desired, M.Clamp(8f * dt, 0f, 1f));   // un peu de dérapage
+            Vector2 prev = k.Pos;
+            k.PrevPos = prev;
             k.Pos += k.Vel * dt;
 
-            TrackState(k, dt);
+            TrackState(k, dt, prev);
         }
 
-        void TrackState(Kart k, float dt)
+        void TrackState(Kart k, float dt, Vector2 prev)
+        {
+            if (Track.Def.StrictCourse) TrackStateStrict(k, dt, prev);
+            else TrackStateLegacy(k, dt);
+        }
+
+        void TrackStateLegacy(Kart k, float dt)
         {
             int old = k.Idx;
             int idx = Track.Nearest(k.Pos, old, 28);
@@ -268,7 +280,64 @@ namespace Kartamania
             }
 
             UpdateProgress(k);
+            CheckFinish(k);
+        }
 
+        void TrackStateStrict(Kart k, float dt, Vector2 prev)
+        {
+            int old = k.Idx;
+            int idx = Track.Nearest(k.Pos, old, 10);
+            k.Idx = idx;
+
+            Vector2 off = k.Pos - Track.Center[idx];
+            float dist = off.Length();
+            k.OffRoad = dist > Track.HalfWidth;
+
+            float limit = Track.HalfWidth + Track.Shoulder;
+            if (dist > limit)
+            {
+                Vector2 n = off / dist;
+                k.Pos = Track.Center[idx] + n * limit;
+                float vn = Vector2.Dot(k.Vel, n);
+                if (vn > 0f) k.Vel -= n * vn * 1.3f;
+                k.Speed *= Math.Max(0f, 1f - 3f * dt);
+                Sfx.Wall(k.IsPlayer);
+            }
+
+            if (Track.Gates.Length > 0)
+            {
+                int next = k.NextGate % Track.Gates.Length;
+                TrackGate gate = Track.Gates[next];
+                float lateral;
+                if (gate.Crossed(prev, k.Pos, out lateral))
+                {
+                    if (next == 0) { k.Lap++; if (k.IsPlayer) Sfx.Lap(); }
+                    k.LastGateIndex = gate.Index;
+                    k.NextGate = (next + 1) % Track.Gates.Length;
+                }
+                else
+                {
+                    bool skipped = false;
+                    for (int g = 0; g < Track.Gates.Length; g++)
+                    {
+                        if (g == next) continue;
+                        if (Track.Forward(k.LastGateIndex, Track.Gates[g].Index) < Track.N / 32) continue;
+                        float dummy;
+                        if (Track.Gates[g].Crossed(prev, k.Pos, out dummy)) { skipped = true; break; }
+                    }
+                    int passed = Track.Forward(k.LastGateIndex, idx);
+                    int expected = Track.Forward(k.LastGateIndex, gate.Index);
+                    if (skipped || passed > expected + Track.N / 16) RespawnAtGate(k);
+                }
+            }
+
+            k.PrevPos = k.Pos;
+            UpdateProgress(k);
+            CheckFinish(k);
+        }
+
+        void CheckFinish(Kart k)
+        {
             if (!k.Finished && k.Lap >= TotalLaps)
             {
                 k.Finished = true;
@@ -292,15 +361,23 @@ namespace Kartamania
         {
             int look = 6 + (int)(Math.Abs(k.Speed) / 75f);
             int ti = (k.Idx + look) % Track.N;
+            if (Track.Def.StrictCourse && Track.Gates.Length > 0)
+            {
+                int gate = Track.Gates[k.NextGate % Track.Gates.Length].Index;
+                if (Track.Forward(k.Idx, gate) <= look + 10) ti = gate;
+            }
             Vector2 target = Track.Center[ti] + Track.Normal[ti] * k.AiLane;
             Vector2 to = target - k.Pos;
             float diff = M.WrapAngle(M.Angle(to) - k.Angle);
             float steer = M.Clamp(diff * 2.4f, -1f, 1f);
+            if (Track.Def.StrictCourse)
+            {
+                float lane = Vector2.Dot(k.Pos - Track.Center[k.Idx], Track.Normal[k.Idx]);
+                steer += M.Clamp((k.AiLane - lane) * 0.006f, -0.3f, 0.3f);
+            }
             float sharp = Math.Abs(diff);
 
             float throttle = 1f;
-            if (sharp > 0.6f && k.Speed > BaseSpeed * 0.6f) throttle = 0f;
-            if (sharp > 1.1f && k.Speed > BaseSpeed * 0.45f) throttle = -0.5f;
 
             // Évite les obstacles et les mines devant lui.
             Vector2 fwd = k.Heading;
@@ -667,7 +744,11 @@ namespace Kartamania
                 if (touching)
                 {
                     k.StuckTimer += dt;
-                    if (k.StuckTimer >= StuckDelay) Respawn(k);
+                    if (k.StuckTimer >= StuckDelay)
+                    {
+                        if (Track.Def.StrictCourse) RespawnAtGate(k);
+                        else Respawn(k);
+                    }
                 }
                 else k.StuckTimer = 0f;
             }
@@ -698,6 +779,35 @@ namespace Kartamania
             int idx = FindSafeRespawn(k.Idx);
             k.Idx = idx;
             k.Pos = Track.Center[idx];
+            k.Angle = M.Angle(Track.Tangent[idx]);
+            k.Speed = 0f;
+            k.Vel = Vector2.Zero;
+            k.SpinTimer = 0f;
+            k.SpinVisual = 0f;
+            k.SlowTimer = 0f;
+            k.StuckTimer = 0f;
+            k.OffRoad = false;
+            UpdateProgress(k);
+            Burst(k.Pos, Color.Cyan, 12, 200f);
+            Sfx.Respawn(k.IsPlayer);
+            Say(k.Name + Loc.Get("MSG_RESPAWN"));
+        }
+
+        void RespawnAtGate(Kart k)
+        {
+            int start = M.Wrap(k.LastGateIndex + 3, Track.N);
+            int idx = start;
+            for (int off = 0; off < Track.N / 4; off++)
+            {
+                int candidate = (start + off) % Track.N;
+                if (SafeRespawn(candidate)) { idx = candidate; break; }
+            }
+
+            float lane = M.Clamp(Vector2.Dot(k.Pos - Track.Center[idx], Track.Normal[idx]),
+                                 -Track.Def.LaneLimit, Track.Def.LaneLimit);
+            k.Idx = idx;
+            k.Pos = Track.Center[idx] + Track.Normal[idx] * lane;
+            k.PrevPos = k.Pos;
             k.Angle = M.Angle(Track.Tangent[idx]);
             k.Speed = 0f;
             k.Vel = Vector2.Zero;

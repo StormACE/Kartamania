@@ -1,9 +1,32 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 
 namespace Kartamania
 {
-    public enum TrackTheme { Normal, Winter, Desert }
+    public enum TrackTheme { Normal, Winter, Desert, City }
+
+    public struct TrackGate
+    {
+        public int Index;
+        public Vector2 Center, Normal, Tangent, A, B;
+
+        public bool Crossed(Vector2 from, Vector2 to, out float lateral)
+        {
+            lateral = 0f;
+            Vector2 d = to - from;
+            Vector2 e = B - A;
+            Vector2 diff = A - from;
+            float den = d.X * e.Y - d.Y * e.X;
+            if (Math.Abs(den) < 0.0001f) return false;
+            float t = (diff.X * e.Y - diff.Y * e.X) / den;
+            float u = (diff.X * d.Y - diff.Y * d.X) / den;
+            if (t < 0f || t > 1f || u < 0f || u > 1f) return false;
+            if (Vector2.Dot(d, Tangent) <= 0f) return false;
+            lateral = Vector2.Dot(from + d * t - Center, Normal);
+            return true;
+        }
+    }
 
     /// <summary>Description d'une piste : une boucle fermée de points de contrôle + décor + obstacles.</summary>
     public sealed class TrackDef
@@ -16,6 +39,10 @@ namespace Kartamania
         public TrackTheme Theme = TrackTheme.Normal;
         public float[] BoxRows;        // positions (0..1) des rangées de boîtes d'armes
         public Vector2[] Obstacles;    // X = position sur la piste (0..1), Y = décalage latéral
+        public bool StrictCourse;
+        public float[] Checkpoints;
+        public Vector2[] CrossingPoints;
+        public float LaneLimit = 80f;
     }
 
     /// <summary>Piste prête à l'emploi : ligne centrale échantillonnée tous les ~24 unités.</summary>
@@ -28,6 +55,8 @@ namespace Kartamania
         public readonly float Length, Spacing, HalfWidth;
         public readonly Vector2[] Center, Tangent, Normal;
         public readonly Vector2[] ObstaclePos, BoxPos;
+        public readonly TrackGate[] Gates;
+        public readonly int[] CrossingIndex;
         public readonly Vector2 Min, Max;
 
         public Track(TrackDef def)
@@ -85,6 +114,48 @@ namespace Kartamania
                 Normal[k] = new Vector2(-d.Y, d.X);   // "droite" de la direction de course (écran Y vers le bas)
             }
 
+            Gates = new TrackGate[def.Checkpoints == null ? 0 : def.Checkpoints.Length];
+            for (int k = 0; k < Gates.Length; k++)
+            {
+                int idx = M.Wrap((int)(def.Checkpoints[k] * N), N);
+                float half = HalfWidth + Shoulder * 0.8f;
+                Gates[k] = new TrackGate
+                {
+                    Index = idx,
+                    Center = Center[idx],
+                    Normal = Normal[idx],
+                    Tangent = Tangent[idx],
+                    A = Center[idx] - Normal[idx] * half,
+                    B = Center[idx] + Normal[idx] * half,
+                };
+            }
+
+            var crossings = new List<int>();
+            if (def.CrossingPoints != null)
+            {
+                float maxSq = (HalfWidth + Shoulder * 2f) * (HalfWidth + Shoulder * 2f);
+                foreach (Vector2 point in def.CrossingPoints)
+                {
+                    for (int pass = 0; pass < 4; pass++)
+                    {
+                        int best = -1;
+                        float bd = maxSq;
+                        for (int i = 0; i < N; i++)
+                        {
+                            bool used = false;
+                            foreach (int c in crossings)
+                                if (LoopDistance(i, c) <= 40) { used = true; break; }
+                            if (used) continue;
+                            float d = Vector2.DistanceSquared(point, Center[i]);
+                            if (d < bd) { bd = d; best = i; }
+                        }
+                        if (best < 0 || bd > maxSq) break;
+                        crossings.Add(best);
+                    }
+                }
+            }
+            CrossingIndex = crossings.ToArray();
+
             ObstaclePos = new Vector2[def.Obstacles.Length];
             for (int i = 0; i < ObstaclePos.Length; i++)
             {
@@ -106,6 +177,22 @@ namespace Kartamania
         {
             float t2 = t * t, t3 = t2 * t;
             return 0.5f * ((2f * p1) + (-p0 + p2) * t + (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 + (-p0 + 3f * p1 - 3f * p2 + p3) * t3);
+        }
+
+        public int Forward(int from, int to) => M.Wrap(to - from, N);
+
+        public int LoopDistance(int a, int b)
+        {
+            int d = M.Wrap(a - b, N);
+            return Math.Min(d, N - d);
+        }
+
+        public bool IsNearCrossing(int idx, int radius)
+        {
+            if (CrossingIndex == null || CrossingIndex.Length == 0) return false;
+            for (int k = 0; k < CrossingIndex.Length; k++)
+                if (LoopDistance(idx, CrossingIndex[k]) <= radius) return true;
+            return false;
         }
 
         /// <summary>Cherche l'échantillon le plus proche de p autour de l'indice "hint".</summary>
@@ -131,7 +218,7 @@ namespace Kartamania
     {
         static Vector2 V(float x, float y) => new Vector2(x, y);
 
-        public static TrackDef[] All() => new[] { Salon(), Lac(), SousSol(), Desert(), Etoile() };
+        public static TrackDef[] All() => new[] { Salon(), Lac(), SousSol(), Desert(), Etoile(), VilleHuit() };
 
         static TrackDef Salon() => new TrackDef
         {
@@ -211,6 +298,22 @@ namespace Kartamania
                 V(0.44f, 70), V(0.52f, -60), V(0.59f, 65), V(0.66f, -70), V(0.73f, 60), V(0.79f, -65),
                 V(0.86f, 70), V(0.93f, -60),
             },
+        };
+
+        static TrackDef VilleHuit() => new TrackDef
+        {
+            Name = "Huit de la Ville",
+            Scale = 1f,
+            Width = 280f,
+            Theme = TrackTheme.City,
+            StrictCourse = true,
+            LaneLimit = 70f,
+            Grass = new Color(48, 52, 60), Rough = new Color(76, 80, 88), Road = new Color(108, 110, 116),
+            Points = TrackShapes.FigureEight(2100f, 1150f, 32),
+            Checkpoints = new[] { 0f, 0.12f, 0.36f, 0.50f, 0.64f, 0.88f },
+            CrossingPoints = new[] { V(0, 0) },
+            BoxRows = new[] { 0.06f, 0.33f, 0.56f, 0.83f },
+            Obstacles = new Vector2[0],
         };
     }
 }

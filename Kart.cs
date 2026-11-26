@@ -42,6 +42,8 @@ namespace Kartamania
 
         // IA
         public float AiLane, AiSkill, AiItemDelay;
+        public int NextGate, LastGateIndex;
+        public Vector2 PrevPos;
 
         public Vector2 Heading => M.Dir(Angle);
     }

@@ -41,3 +41,4 @@ C:\Users\krypt\Documents\GitHub\Kartamania\obj\x64\Release\net10.0\Kartamania.pd
 C:\Users\krypt\Documents\GitHub\Kartamania\obj\x64\Release\net10.0\Kartamania.genruntimeconfig.cache
 C:\Users\krypt\Documents\GitHub\Kartamania\obj\x64\Release\net10.0\ref\Kartamania.dll
 C:\Users\krypt\Documents\GitHub\Kartamania\bin\x64\Release\net10.0\Music\MetalRoll.ogg
+C:\Users\krypt\Documents\GitHub\Kartamania\bin\x64\Release\net10.0\Kartamania.exe

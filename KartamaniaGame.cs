@@ -584,6 +584,36 @@ namespace Kartamania
             }
         }
 
+        void DrawBuilding(Vector2 p, float scale, int seed, Vector2 up, Vector2 right, float rot)
+        {
+            Vector2 O(float x, float y) => p + right * (x * scale) + up * (y * scale);
+            int variant = Math.Abs(seed) % 5;
+            float height = 160f + variant * 32f;
+            float width = 92f + (variant % 3) * 16f;
+            Color wall = variant % 2 == 0 ? new Color(96, 104, 118) : new Color(122, 118, 108);
+            Color roof = variant % 3 == 0 ? new Color(62, 70, 82) : new Color(78, 74, 68);
+
+            RectC(O(0f, height * 0.5f), new Vector2(width + 12f, 12f) * scale, rot, roof);
+            RectC(O(0f, 0f), new Vector2(width, height) * scale, rot, wall);
+            for (int row = 0; row < 3; row++)
+                for (int col = -1; col <= 1; col++)
+                {
+                    Color glass = ((seed + row * 3 + col + 9) % 4 == 0)
+                        ? new Color(255, 216, 128)
+                        : new Color(44, 58, 72);
+                    RectC(O(col * width * 0.27f, -height * 0.28f + row * height * 0.27f),
+                          new Vector2(width * 0.16f, height * 0.13f) * scale, rot, glass);
+                }
+        }
+
+        void DrawLamp(Vector2 p, float scale, Vector2 up, Vector2 right, float rot)
+        {
+            Vector2 O(float x, float y) => p + right * (x * scale) + up * (y * scale);
+            RectC(O(0f, 34f), new Vector2(6f, 68f) * scale, rot, new Color(40, 44, 50));
+            RectC(O(12f, 66f), new Vector2(26f, 5f) * scale, rot, new Color(40, 44, 50));
+            Disc(O(24f, 62f), 18f * scale, new Color(255, 224, 150));
+        }
+
         void Face(Texture2D tex, Vector2 center, float diameter, float rotation, Color tint) =>
             sb.Draw(tex, center, null, tint, rotation, new Vector2(tex.Width * 0.5f, tex.Height * 0.5f),
                     diameter / tex.Width, SpriteEffects.None, 0f);
@@ -773,6 +803,7 @@ namespace Kartamania
         {
             Track tr = race.Track;
             TrackDef def = tr.Def;
+            bool city = def.Theme == TrackTheme.City;
             int n = tr.N;
             int w = W, h = H;
 
@@ -797,15 +828,25 @@ namespace Kartamania
                 if (Vector2.DistanceSquared(tr.Center[i], camPos) <= cull2) Disc(tr.Center[i], rough, def.Rough);
 
             for (int i = 0; i < n; i++)
-                if (Vector2.DistanceSquared(tr.Center[i], camPos) <= cull2)
-                    Disc(tr.Center[i], def.Width + 34f, ((i / 3) % 2 == 0) ? new Color(210, 40, 40) : Color.White);
+            {
+                if (Vector2.DistanceSquared(tr.Center[i], camPos) > cull2) continue;
+                if (city && tr.IsNearCrossing(i, 10)) continue;
+                Disc(tr.Center[i], def.Width + 34f, ((i / 3) % 2 == 0) ? new Color(210, 40, 40) : Color.White);
+            }
 
             for (int i = 0; i < n; i++)
                 if (Vector2.DistanceSquared(tr.Center[i], camPos) <= cull2) Disc(tr.Center[i], def.Width, def.Road);
 
+            if (city)
+                foreach (int c in tr.CrossingIndex)
+                    if (Vector2.DistanceSquared(tr.Center[c], camPos) <= cull2)
+                        RectC(tr.Center[c], new Vector2(def.Width * 2.4f, def.Width * 2.4f),
+                              M.Angle(tr.Tangent[c]), def.Road);
+
             for (int i = 0; i < n; i++)
             {
                 if (Vector2.DistanceSquared(tr.Center[i], camPos) > cull2) continue;
+                if (city && tr.IsNearCrossing(i, 10)) continue;
                 if (i % 6 < 3) RectC(tr.Center[i], new Vector2(30f, 6f), M.Angle(tr.Tangent[i]), Color.White * 0.5f);
             }
 
@@ -821,11 +862,23 @@ namespace Kartamania
                     }
             }
 
+            if (city)
+            {
+                float c = def.Width / 14f;
+                float rot = M.Angle(tr.Tangent[0]);
+                for (int a = 0; a < 8; a++)
+                {
+                    Vector2 p = tr.Center[0] + tr.Tangent[0] * (c * 3.5f) + tr.Normal[0] * ((a - 3.5f) * c * 1.7f);
+                    RectC(p, new Vector2(c * 1.3f, c * 3.2f), rot, Color.White * 0.7f);
+                }
+            }
+
             // Barrières (pneus) de chaque côté.
             float wall = tr.HalfWidth + Track.Shoulder;
             for (int i = 0; i < n; i += 2)
             {
                 if (Vector2.DistanceSquared(tr.Center[i], camPos) > cull2) continue;
+                if (city && tr.IsNearCrossing(i, 12)) continue;
                 Color bc = ((i / 2) % 2 == 0) ? new Color(210, 40, 40) : Color.White;
                 Disc(tr.Center[i] + tr.Normal[i] * wall, 22f, bc);
                 Disc(tr.Center[i] - tr.Normal[i] * wall, 22f, bc);
@@ -833,14 +886,20 @@ namespace Kartamania
 
             for (int i = 0; i < n; i += 8)
             {
+                if (city && tr.IsNearCrossing(i, 14)) continue;
                 for (int side = -1; side <= 1; side += 2)
                 {
                     int seed = i * 7 + (side + 1) * 13;
                     float jitter = ((seed * 37) % 17 - 8) * 5f;
-                    Vector2 p = tr.Center[i] + tr.Normal[i] * (side * (wall + 95f + jitter));
+                    Vector2 p = tr.Center[i] + tr.Normal[i] * (side * (wall + (city ? 160f : 95f) + jitter));
                     if (Vector2.DistanceSquared(p, camPos) > cull2) continue;
                     float scale = 0.85f + ((seed * 11) % 9) * 0.045f;
-                    DrawTree(p, scale, def.Theme, treeUp, treeRight, treeRot);
+                    if (city)
+                    {
+                        DrawBuilding(p, scale, seed, treeUp, treeRight, treeRot);
+                        if (i % 32 == 0) DrawLamp(p - tr.Normal[i] * (side * 70f), scale, treeUp, treeRight, treeRot);
+                    }
+                    else DrawTree(p, scale, def.Theme, treeUp, treeRight, treeRot);
                 }
             }
 
