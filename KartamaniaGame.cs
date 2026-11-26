@@ -743,6 +743,36 @@ namespace Kartamania
             }
         }
 
+        void DrawChalet(Vector2 p, float scale, Vector2 up, Vector2 right, float rot, int seed)
+        {
+            Vector2 O(float x, float y) => p + right * (x * scale) + up * (y * scale);
+            int variant = Math.Abs(seed) % 3;
+            Color wood = variant == 0 ? new Color(126, 84, 50) : (variant == 1 ? new Color(142, 96, 58) : new Color(116, 76, 46));
+            Color woodDark = new Color(82, 52, 30);
+            Color woodLight = new Color(168, 116, 72);
+            Color roof = new Color(74, 46, 32);
+            Color roofLight = new Color(104, 64, 42);
+            float w = 150f;
+            float ht = 110f;
+
+            RectC(O(0f, ht * 0.5f), new Vector2(w, ht) * scale, rot, wood);
+            for (int row = 0; row < 5; row++)
+                RectC(O(0f, row * ht / 5f), new Vector2(w + 6f, 7f) * scale, rot, row % 2 == 0 ? woodDark : woodLight);
+
+            RectC(O(-w * 0.28f, ht + 34f), new Vector2(w * 0.72f, 16f) * scale, rot - 0.62f, roof);
+            RectC(O(w * 0.28f, ht + 34f), new Vector2(w * 0.72f, 16f) * scale, rot + 0.62f, roofLight);
+            RectC(O(0f, ht + 62f), new Vector2(20f, 18f) * scale, rot, roof);
+            RectC(O(w * 0.22f, ht + 70f), new Vector2(16f, 54f) * scale, rot, woodDark);
+
+            RectC(O(0f, ht * 0.18f), new Vector2(34f, 58f) * scale, rot, woodDark);
+            Disc(O(11f, ht * 0.18f), 4f * scale, Color.Gold);
+
+            RectC(O(-w * 0.28f, ht * 0.62f), new Vector2(30f, 28f) * scale, rot, new Color(255, 214, 130));
+            RectC(O(w * 0.28f, ht * 0.62f), new Vector2(30f, 28f) * scale, rot, new Color(255, 214, 130));
+            RectC(O(-w * 0.28f, ht * 0.62f), new Vector2(34f, 4f) * scale, rot, woodDark);
+            RectC(O(w * 0.28f, ht * 0.62f), new Vector2(34f, 4f) * scale, rot, woodDark);
+        }
+
         void DrawBuilding(Vector2 p, float scale, int seed, Vector2 up, Vector2 right, float rot)
         {
             Vector2 O(float x, float y) => p + right * (x * scale) + up * (y * scale);
@@ -1071,6 +1101,7 @@ namespace Kartamania
 
 
             float Rnd(int s, int m) => (Math.Abs(s * 9301 + 49297) % m) / (float)m;
+            var scenerySpots = new List<(Vector2 Pos, float Radius)>();
             int treeStep = def.Forest ? 4 : 8;
             int treeLayers = def.Forest ? 2 : 1;
             for (int i = 0; i < n; i += treeStep)
@@ -1105,7 +1136,38 @@ namespace Kartamania
                             DrawBuilding(p, scale, seed, treeUp, treeRight, treeRot);
                             if (i % 32 == 0) DrawLamp(p - tr.Normal[i] * (side * 70f), scale, treeUp, treeRight, treeRot);
                         }
-                        else DrawTree(p, scale, def.Theme, treeUp, treeRight, treeRot, seed + layer * 17);
+                        else
+                        {
+                            DrawTree(p, scale, def.Theme, treeUp, treeRight, treeRot, seed + layer * 17);
+                            if (def.Forest) scenerySpots.Add((p, 78f * scale));
+                        }
+                    }
+                }
+            }
+
+            if (def.Forest)
+            {
+                for (int i = 0; i < n; i += 40)
+                {
+                    for (int side = -1; side <= 1; side += 2)
+                    {
+                        int seed = i * 17 + (side + 1) * 11 + 5;
+                        float along = (Rnd(seed + 1, 211) - 0.5f) * 170f;
+                        float lateral = wall + 440f + Rnd(seed + 2, 271) * 180f;
+                        Vector2 p = tr.Center[i] + tr.Tangent[i] * along + tr.Normal[i] * (side * lateral);
+                        if (Vector2.DistanceSquared(p, camPos) > cull2) continue;
+                        int nearTrack = tr.NearestAny(p);
+                        if ((p - tr.Center[nearTrack]).Length() < wall + 150f) continue;
+                        float scale = 0.65f + Rnd(seed + 3, 7) * 0.20f;
+                        float clear = 105f * scale;
+                        bool blocked = false;
+                        foreach (var spot in scenerySpots)
+                        {
+                            if ((p - spot.Pos).Length() < spot.Radius + clear) { blocked = true; break; }
+                        }
+                        if (blocked) continue;
+                        DrawChalet(p, scale, treeUp, treeRight, treeRot, seed);
+                        scenerySpots.Add((p, clear));
                     }
                 }
             }
