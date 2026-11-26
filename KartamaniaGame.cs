@@ -680,23 +680,142 @@ namespace Kartamania
             Color bark = theme == TrackTheme.Desert ? new Color(150, 112, 74) : new Color(95, 65, 42);
             Color barkDark = theme == TrackTheme.Desert ? new Color(105, 76, 50) : new Color(70, 46, 30);
             Color barkLight = theme == TrackTheme.Desert ? new Color(185, 145, 100) : new Color(120, 84, 55);
+            int shape = Math.Abs(variant) % (theme == TrackTheme.Desert ? 6 : 4);
 
             if (theme == TrackTheme.Desert)
             {
-                RectC(O(0f, -14f), new Vector2(14f, 44f) * scale, rot, barkDark);
-                RectC(O(2f, -14f), new Vector2(4f, 42f) * scale, rot, barkLight);
-                RectC(O(-9f, 12f), new Vector2(30f, 7f) * scale, rot + 0.55f, bark);
-                RectC(O(10f, 18f), new Vector2(34f, 7f) * scale, rot - 0.48f, bark);
-                RectC(O(-15f, 24f), new Vector2(24f, 6f) * scale, rot + 0.9f, barkDark);
-                RectC(O(14f, 30f), new Vector2(22f, 6f) * scale, rot - 0.85f, barkDark);
-                RectC(O(-22f, 20f), new Vector2(18f, 5f) * scale, rot + 0.25f, barkLight);
-                RectC(O(22f, 27f), new Vector2(16f, 5f) * scale, rot - 0.2f, barkLight);
-                RectC(O(-8f, -31f), new Vector2(20f, 5f) * scale, rot + 0.35f, barkDark);
-                RectC(O(8f, -31f), new Vector2(20f, 5f) * scale, rot - 0.35f, barkDark);
+                Color cactus = new Color(58, 122, 62);
+                Color cactusLight = new Color(92, 158, 80);
+                Color cactusDark = new Color(34, 88, 46);
+                Color spine = new Color(226, 214, 164);
+                Color flower = new Color(236, 106, 118);
+
+                void Column(float cx, float cy, float cw, float ch)
+                {
+                    Ellipse(O(cx, cy), new Vector2(cw, ch) * scale, rot, cactus);
+                    RectC(O(cx, cy - ch * 0.28f), new Vector2(cw, ch * 0.72f) * scale, rot, cactus);
+                    Disc(O(cx, cy + ch * 0.5f), cw * 0.5f * scale, cactusLight);
+                    for (int rib = -1; rib <= 1; rib++)
+                        RectC(O(cx + rib * cw * 0.24f, cy), new Vector2(2.5f, ch * 0.86f) * scale, rot,
+                              rib == 0 ? cactusLight : cactusDark);
+                    for (int s = 0; s < 6; s++)
+                    {
+                        float yy = cy - ch * 0.34f + s * ch * 0.14f;
+                        Disc(O(cx - cw * 0.42f, yy), 2.2f * scale, spine);
+                        Disc(O(cx + cw * 0.42f, yy + 3f), 2.2f * scale, spine);
+                    }
+                }
+
+                void Arm(float sx, float sy, float dir, float len)
+                {
+                    RectC(O(sx + dir * len * 0.5f, sy), new Vector2(len, 10f) * scale, rot, cactus);
+                    RectC(O(sx + dir * len * 0.5f, sy + 3f), new Vector2(len * 0.9f, 2.5f) * scale, rot, cactusLight);
+                    RectC(O(sx + dir * len, sy + len * 0.34f), new Vector2(11f, len * 0.75f) * scale, rot, cactus);
+                    Disc(O(sx + dir * len, sy + len * 0.7f), 5.5f * scale, cactusLight);
+                    for (int s = 0; s < 3; s++)
+                        Disc(O(sx + dir * (len * (0.35f + s * 0.25f)), sy + 7f), 2f * scale, spine);
+                }
+
+                void Twig(float tx, float ty, float angle, float len, Color c)
+                {
+                    RectC(O(tx + (float)Math.Cos(angle) * len * 0.5f,
+                            ty + (float)Math.Sin(angle) * len * 0.5f),
+                          new Vector2(len, 4f) * scale, rot + angle, c);
+                }
+
+                Ellipse(O(0f, -22f), new Vector2(70f, 20f) * scale, rot, Color.Black * 0.16f);
+
+                if (shape == 0)
+                {
+                    Column(0f, 2f, 18f, 62f);
+                    Arm(-9f, 10f, -1f, 30f);
+                    Arm(9f, 18f, 1f, 26f);
+                    Disc(O(0f, 35f), 5f * scale, flower);
+                }
+                else if (shape == 1)
+                {
+                    Column(5f, -2f, 17f, 58f);
+                    Column(-11f, -12f, 11f, 32f);
+                    Arm(11f, 12f, 1f, 24f);
+                    Disc(O(5f, 30f), 4f * scale, flower);
+                }
+                else if (shape == 2)
+                {
+                    Column(-13f, -8f, 12f, 38f);
+                    Column(12f, -6f, 14f, 44f);
+                    Column(0f, 2f, 13f, 54f);
+                    Disc(O(0f, 32f), 4f * scale, flower);
+                    Disc(O(-13f, 14f), 3f * scale, flower);
+                }
+                else if (shape == 3)
+                {
+                    Ellipse(O(0f, 4f), new Vector2(52f, 58f) * scale, rot, cactus);
+                    Ellipse(O(0f, 12f), new Vector2(34f, 38f) * scale, rot, cactusLight);
+                    for (int rib = -2; rib <= 2; rib++)
+                        Ellipse(O(rib * 7f, 10f), new Vector2(3f, 34f) * scale, rot, cactusDark);
+                    for (int s = 0; s < 12; s++)
+                    {
+                        float a = s * M.Pi / 6f;
+                        Disc(O((float)Math.Cos(a) * 25f, 12f + (float)Math.Sin(a) * 28f), 2.5f * scale, spine);
+                    }
+                    Disc(O(0f, 36f), 6f * scale, flower);
+                }
+                else
+                {
+                    Color brush = new Color(156, 126, 82);
+                    Color brushMid = new Color(132, 104, 64);
+                    Color brushDark = new Color(98, 74, 44);
+                    Color brushLight = new Color(198, 168, 116);
+                    if (shape == 4)
+                    {
+                        Disc(O(0f, 8f), 20f * scale, brushDark);
+                        for (int s = 0; s < 26; s++)
+                        {
+                            float a = s * 2.399963f;
+                            float r = 5f + (s % 7) * 4.4f;
+                            float px = (float)Math.Cos(a) * r * 1.15f;
+                            float py = 12f + (float)Math.Sin(a) * r * 0.8f;
+                            float rr = 8f + (s % 5) * 2.4f;
+                            Disc(O(px, py), rr * scale, s % 3 == 0 ? brushDark : (s % 3 == 1 ? brush : brushLight));
+                        }
+                        for (int s = 0; s < 10; s++)
+                        {
+                            float a = s * M.Pi / 5f + 0.2f;
+                            float len = 28f + (s % 3) * 6f;
+                            Twig(0f, 10f, a, len, brushMid);
+                            Disc(O((float)Math.Cos(a) * len, 10f + (float)Math.Sin(a) * len), 3f * scale, brushLight);
+                        }
+                    }
+                    else
+                    {
+                        RectC(O(0f, -8f), new Vector2(9f, 34f) * scale, rot, brushDark);
+                        for (int s = 0; s < 22; s++)
+                        {
+                            float a = s * 2.399963f;
+                            float t = (s % 7) / 6f;
+                            float px = (float)Math.Cos(a) * (8f + t * 20f);
+                            float py = 2f + t * 44f + (float)Math.Sin(a) * 7f;
+                            float rw = 9f + (s % 4) * 2.6f;
+                            float rh = 7f + (s % 3) * 2.2f;
+                            Ellipse(O(px, py), new Vector2(rw, rh) * scale, rot + a * 0.15f,
+                                    s % 4 == 0 ? brushDark : (s % 4 == 1 ? brushLight : brush));
+                        }
+                        for (int s = 0; s < 8; s++)
+                        {
+                            float a = -1.05f + s * 0.3f;
+                            Twig(0f, 4f + (s % 3) * 12f, a, 26f + (s % 4) * 5f, brushMid);
+                        }
+                        for (int s = 0; s < 12; s++)
+                        {
+                            float a = s * 2.399963f + 0.7f;
+                            float r = 18f + (s % 5) * 5f;
+                            Disc(O((float)Math.Cos(a) * r, 28f + (float)Math.Sin(a) * r * 0.7f),
+                                 2.8f * scale, brushLight);
+                        }
+                    }
+                }
                 return;
             }
-
-            int shape = Math.Abs(variant) % 4;
             int tint = Math.Abs(variant * 13) % 19;
             Color leafA = new Color(30 + tint, 90 + tint, 45);
             Color leafB = new Color(45 + tint, 115 + tint, 55);
@@ -1009,6 +1128,7 @@ namespace Kartamania
             Track tr = race.Track;
             TrackDef def = tr.Def;
             bool city = def.Theme == TrackTheme.City;
+            bool desert = def.Theme == TrackTheme.Desert;
             int n = tr.N;
             int w = W, h = H;
 
@@ -1102,8 +1222,8 @@ namespace Kartamania
 
             float Rnd(int s, int m) => (Math.Abs(s * 9301 + 49297) % m) / (float)m;
             var scenerySpots = new List<(Vector2 Pos, float Radius)>();
-            int treeStep = def.Forest ? 4 : 8;
-            int treeLayers = def.Forest ? 2 : 1;
+            int treeStep = def.Forest ? 4 : (desert ? 7 : 8);
+            int treeLayers = def.Forest || desert ? 2 : 1;
             for (int i = 0; i < n; i += treeStep)
             {
                 if (city && tr.IsNearCrossing(i, 14)) continue;
@@ -1119,18 +1239,27 @@ namespace Kartamania
                             float lateral = wall + 70f + Rnd(seed + 31, 271) * 260f;
                             p = tr.Center[i] + tr.Tangent[i] * along + tr.Normal[i] * (side * lateral);
                         }
+                        else if (desert)
+                        {
+                            float jitter = ((seed * 37) % 17 - 8) * 5f;
+                            float along = (Rnd(seed + 7, 211) - 0.5f) * 130f;
+                            float lateral = wall + 95f + jitter + layer * 280f;
+                            p = tr.Center[i] + tr.Tangent[i] * along + tr.Normal[i] * (side * lateral);
+                        }
                         else
                         {
                             float jitter = ((seed * 37) % 17 - 8) * 5f;
                             p = tr.Center[i] + tr.Normal[i] * (side * (wall + (city ? 160f : 95f) + jitter));
                         }
                         if (Vector2.DistanceSquared(p, camPos) > cull2) continue;
-                        if (def.Forest)
+                        if (def.Forest || desert)
                         {
                             int nearTrack = tr.NearestAny(p);
-                            if ((p - tr.Center[nearTrack]).Length() < wall + 80f) continue;
+                            if ((p - tr.Center[nearTrack]).Length() < wall + (desert ? 50f : 80f)) continue;
                         }
-                        float scale = 0.85f + ((seed * 11) % 9) * 0.045f;
+                        float scale = desert
+                            ? (0.72f + Rnd(seed + 5, 7) * 0.20f) * (layer == 1 ? 0.88f : 1f)
+                            : 0.85f + ((seed * 11) % 9) * 0.045f;
                         if (city)
                         {
                             DrawBuilding(p, scale, seed, treeUp, treeRight, treeRot);
