@@ -14,9 +14,14 @@ namespace Kartamania
     public sealed class KartamaniaGame : Game
     {
         enum State { Menu, Racing, Paused, Results }
-        enum Row { Play, Track, Player, KartColor, Difficulty, Laps, Pilots, Resolution, Display, VSync, Fps, Language, Quit }
+        enum Row { Play, Settings, Track, Player, KartColor, Difficulty, Laps, Pilots, Resolution, Display, VSync, Fps, Language, Back, Quit }
 
-        static readonly Row[] Rows = (Row[])Enum.GetValues(typeof(Row));
+        static readonly Row[] MainRows = { Row.Play, Row.Settings, Row.Quit };
+        static readonly Row[] SettingsRows =
+        {
+            Row.Track, Row.Player, Row.KartColor, Row.Difficulty, Row.Laps, Row.Pilots,
+            Row.Resolution, Row.Display, Row.VSync, Row.Fps, Row.Language, Row.Back,
+        };
         static readonly float[] DifficultyStrength = { 0.88f, 1.16f, 1.33f };
         static readonly float[] DifficultyAiStrength = { 0.90f, 0.90f, 1.062f };
         static readonly float[] DifficultyAiAggression = { 0f, 0f, 1f };
@@ -57,6 +62,8 @@ namespace Kartamania
 
         State state = State.Menu;
         int sel;
+        bool inSettings;
+        int settingsSel;
         Race race;
         bool newRecord;
         int countdownBeep;
@@ -393,8 +400,20 @@ namespace Kartamania
             int stickX = StickStep(pad.ThumbSticks.Left.X, ppad.ThumbSticks.Left.X, ref stickRepeatX, dt);
             int stickXEdge = StickEdge(pad.ThumbSticks.Left.X, ppad.ThumbSticks.Left.X);
 
-            if (Press(Keys.Up) || PadPress(Buttons.DPadUp) || stickY > 0) sel = M.Wrap(sel - 1, Rows.Length);
-            if (Press(Keys.Down) || PadPress(Buttons.DPadDown) || stickY < 0) sel = M.Wrap(sel + 1, Rows.Length);
+            bool back = Press(Keys.Escape) || PadPress(Buttons.B);
+            if (back)
+            {
+                cfg.Save();
+                if (inSettings) inSettings = false;
+                else Exit();
+                return;
+            }
+
+            Row[] rows = inSettings ? SettingsRows : MainRows;
+            ref int selection = ref (inSettings ? ref settingsSel : ref sel);
+
+            if (Press(Keys.Up) || PadPress(Buttons.DPadUp) || stickY > 0) selection = M.Wrap(selection - 1, rows.Length);
+            if (Press(Keys.Down) || PadPress(Buttons.DPadDown) || stickY < 0) selection = M.Wrap(selection + 1, rows.Length);
 
             int dir = 0;
             if (Press(Keys.Left) || PadPress(Buttons.DPadLeft) || stickX < 0) dir = -1;
@@ -404,16 +423,20 @@ namespace Kartamania
             if (Press(Keys.Right) || PadPress(Buttons.DPadRight) || stickXEdge > 0) dirEdge = 1;
             bool enter = Press(Keys.Enter) || Press(Keys.Space) || PadPress(Buttons.A);
 
-            switch (Rows[sel])
+            switch (rows[selection])
             {
                 case Row.Play: if (enter) StartRace(); break;
+                case Row.Settings:
+                    if (enter) { inSettings = true; settingsSel = 0; }
+                    break;
+                case Row.Back:
+                    if (enter) { inSettings = false; cfg.Save(); }
+                    break;
                 case Row.Track:
                     if (dir != 0) cfg.Track = M.Wrap(cfg.Track + dir, tracks.Length);
-                    else if (enter) StartRace();
                     break;
                 case Row.Player:
                     if (dir != 0) cfg.Player = M.Wrap(cfg.Player + dir, faces.Count);
-                    else if (enter) StartRace();
                     break;
                 case Row.KartColor:
                     if (dir != 0)
@@ -421,19 +444,15 @@ namespace Kartamania
                         cfg.KartColor = M.Wrap(cfg.KartColor + dir, KartColors.Length);
                         UpdatePlayerPlaceholder();
                     }
-                    else if (enter) StartRace();
                     break;
                 case Row.Difficulty:
                     if (dir != 0) cfg.Difficulty = M.Wrap(cfg.Difficulty + dir, DifficultyStrength.Length);
-                    else if (enter) StartRace();
                     break;
                 case Row.Laps:
                     if (dir != 0) cfg.Laps = (int)M.Clamp(cfg.Laps + dir, 1, 20);
-                    else if (enter) StartRace();
                     break;
                 case Row.Pilots:
                     if (dir != 0) cfg.RacerCount = (int)M.Clamp(cfg.RacerCount + dir, 1, 10);
-                    else if (enter) StartRace();
                     break;
                 case Row.Resolution:
                     if (dir != 0)
@@ -470,7 +489,6 @@ namespace Kartamania
                     break;
             }
 
-            if (Press(Keys.Escape)) { cfg.Save(); Exit(); }
             if (PadPress(Buttons.Y)) CycleDisplay(1);
         }
 
@@ -1000,8 +1018,8 @@ namespace Kartamania
 
         // Commandes affichées : boutons d'une manette Xbox si une manette est branchée, sinon clavier.
         string[] MenuHint() => pad.IsConnected
-            ? new[] { Loc.Get("HINT_MENU_PAD_1"), Loc.Get("HINT_MENU_PAD_2") }
-            : new[] { Loc.Get("HINT_MENU_KB_1"), Loc.Get("HINT_MENU_KB_2") };
+            ? new[] { Loc.Get("HINT_MENU_PAD_1"), Loc.Get(inSettings ? "HINT_MENU_BACK_PAD" : "HINT_MENU_PAD_2") }
+            : new[] { Loc.Get("HINT_MENU_KB_1"), Loc.Get(inSettings ? "HINT_MENU_BACK_KB" : "HINT_MENU_KB_2") };
 
         string RaceHint() => pad.IsConnected ? Loc.Get("HINT_RACE_PAD") : Loc.Get("HINT_RACE_KB");
 
@@ -1085,6 +1103,8 @@ namespace Kartamania
             switch (r)
             {
                 case Row.Play: return Loc.Get("ROW_PLAY");
+                case Row.Settings: return Loc.Get("ROW_SETTINGS");
+                case Row.Back: return Loc.Get("ROW_BACK");
                 case Row.Track: return Loc.Get("LABEL_TRACK") + ": < " + Loc.TrackName(tracks[cfg.Track].Def.Name) + " >";
                 case Row.Player: return Loc.Get("LABEL_PLAYER") + ": < " + (faces[cfg.Player].IsPlaceholder ? Loc.Get("PLAYER") : faces[cfg.Player].Name) + " >";
                 case Row.KartColor: return Loc.Get("LABEL_KART_COLOR") + ": < " + Loc.Get("COLOR_" + cfg.KartColor) + " >";
@@ -1137,10 +1157,12 @@ namespace Kartamania
             int ts = T(4);
             float y = menuKart != null ? kartY + kartH + T(18) : h * 0.34f;
             float lineH = ts * 9f;
-            for (int i = 0; i < Rows.Length; i++)
+            Row[] rows = inSettings ? SettingsRows : MainRows;
+            int selection = inSettings ? settingsSel : sel;
+            for (int i = 0; i < rows.Length; i++)
             {
-                bool on = i == sel;
-                string line = (on ? "> " : "  ") + RowText(Rows[i]);
+                bool on = i == selection;
+                string line = (on ? "> " : "  ") + RowText(rows[i]);
                 Text(line, lx, y + i * lineH, ts, on ? new Color(255, 215, 60) : Color.White * 0.85f);
             }
 
