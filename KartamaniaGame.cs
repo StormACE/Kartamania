@@ -13,10 +13,10 @@ namespace Kartamania
 {
     public sealed class KartamaniaGame : Game
     {
-        enum State { Menu, Racing, Paused, Results }
-        enum Row { Play, Settings, Track, Player, KartColor, Difficulty, Laps, Pilots, Resolution, Display, VSync, Fps, Language, Back, Quit }
+        enum State { Menu, Racing, Paused, Results, Standings, Podium }
+        enum Row { Play, Championship, Settings, Track, Player, KartColor, Difficulty, Laps, Pilots, Resolution, Display, VSync, Fps, Language, Back, Quit }
 
-        static readonly Row[] MainRows = { Row.Play, Row.Track, Row.Player, Row.KartColor, Row.Settings, Row.Quit };
+        static readonly Row[] MainRows = { Row.Play, Row.Championship, Row.Track, Row.Player, Row.KartColor, Row.Settings, Row.Quit };
         static readonly Row[] SettingsRows =
         {
             Row.Difficulty, Row.Laps, Row.Pilots, Row.Resolution, Row.Display,
@@ -65,6 +65,7 @@ namespace Kartamania
         bool inSettings;
         int settingsSel;
         Race race;
+        Championship championship;
         bool newRecord;
         int countdownBeep;
         float penaltyBannerTimer;
@@ -364,6 +365,8 @@ namespace Kartamania
                     case State.Racing: UpdateRace(dt); break;
                     case State.Paused: UpdatePause(); break;
                     case State.Results: UpdateResults(); break;
+                    case State.Standings: UpdateStandings(); break;
+                    case State.Podium: UpdatePodium(); break;
                 }
             }
 
@@ -426,6 +429,7 @@ namespace Kartamania
             switch (rows[selection])
             {
                 case Row.Play: if (enter) StartRace(); break;
+                case Row.Championship: if (enter) StartChampionship(); break;
                 case Row.Settings:
                     if (enter) { inSettings = true; settingsSel = 0; }
                     break;
@@ -495,9 +499,8 @@ namespace Kartamania
             if (PadPress(Buttons.Y)) CycleDisplay(1);
         }
 
-        void StartRace()
+        List<RacerInfo> BuildRacers()
         {
-            cfg.Save();
             var racers = new List<RacerInfo>();
             FaceInfo me = faces[cfg.Player];
             int playerColor = M.Wrap(cfg.KartColor, KartColors.Length);
@@ -525,8 +528,12 @@ namespace Kartamania
                 });
                 bot++;
             }
+            return racers;
+        }
 
-            race = new Race(tracks[cfg.Track], racers, cfg.Laps, DifficultyStrength[cfg.Difficulty], DifficultyAiStrength[cfg.Difficulty], DifficultyAiAggression[cfg.Difficulty], rng);
+        void BeginRace(IList<RacerInfo> racers, int trackIndex)
+        {
+            race = new Race(tracks[trackIndex], racers, cfg.Laps, DifficultyStrength[cfg.Difficulty], DifficultyAiStrength[cfg.Difficulty], DifficultyAiAggression[cfg.Difficulty], rng);
             camTarget = null;
             camAngle = race.Player.Angle;
             camPos = race.Player.Pos + race.Player.Heading * 260f;
@@ -539,6 +546,28 @@ namespace Kartamania
             Sfx.StartEngine();
             MusicPlayer.PlayRandom();
             state = State.Racing;
+        }
+
+        void StartRace()
+        {
+            cfg.Save();
+            championship = null;
+            BeginRace(BuildRacers(), cfg.Track);
+        }
+
+        void StartChampionship()
+        {
+            cfg.Save();
+            championship = new Championship(BuildRacers(), tracks.Length);
+            championship.Round = 0;
+            BeginRace(championship.Racers, championship.Round);
+        }
+
+        void StartNextChampionshipRace()
+        {
+            if (championship == null || championship.IsLastRace) return;
+            championship.Round++;
+            BeginRace(championship.Racers, championship.Round);
         }
 
         PlayerInput ReadInput(float dt)
@@ -641,6 +670,7 @@ namespace Kartamania
 
             if (race.Over)
             {
+                if (championship != null) championship.RecordRace(race);
                 newRecord = false;
                 if (p.Finished && !p.Eliminated && p.Lap >= race.TotalLaps)
                     newRecord = cfg.RecordTime(race.Track.Def.Name, race.TotalLaps, cfg.Difficulty, p.FinishTime);
@@ -662,20 +692,72 @@ namespace Kartamania
             if (Press(Keys.M) || PadPress(Buttons.B))
             {
                 Sfx.StopEngine();
+                championship = null;
                 MusicPlayer.PlayMenu();
                 state = State.Menu;
             }
-            if (Press(Keys.R) || PadPress(Buttons.Y)) StartRace();
+            if (Press(Keys.R) || PadPress(Buttons.Y))
+            {
+                if (championship != null) BeginRace(championship.Racers, championship.Round);
+                else StartRace();
+            }
         }
 
         void UpdateResults()
         {
+            if (championship != null)
+            {
+                if (Press(Keys.Enter) || PadPress(Buttons.A))
+                {
+                    if (championship.IsLastRace)
+                    {
+                        MusicPlayer.PlayMenu();
+                        state = State.Standings;
+                    }
+                    else StartNextChampionshipRace();
+                    return;
+                }
+                if (Press(Keys.Escape) || PadPress(Buttons.B))
+                {
+                    championship = null;
+                    MusicPlayer.PlayMenu();
+                    state = State.Menu;
+                }
+                return;
+            }
+
             if (Press(Keys.Enter) || PadPress(Buttons.A) || Press(Keys.Escape))
             {
                 MusicPlayer.PlayMenu();
                 state = State.Menu;
             }
             if (Press(Keys.R) || PadPress(Buttons.Y)) StartRace();
+        }
+
+        void UpdateStandings()
+        {
+            if (championship == null) { state = State.Menu; return; }
+            if (Press(Keys.Enter) || PadPress(Buttons.A))
+            {
+                List<Championship.Driver> order = championship.Standings();
+                Sfx.Finish(order.Count > 0 && order[0].IsPlayer);
+                state = State.Podium;
+                return;
+            }
+            if (Press(Keys.Escape) || PadPress(Buttons.B))
+            {
+                championship = null;
+                state = State.Menu;
+            }
+        }
+
+        void UpdatePodium()
+        {
+            if (Press(Keys.Enter) || PadPress(Buttons.A) || Press(Keys.Escape) || PadPress(Buttons.B))
+            {
+                championship = null;
+                state = State.Menu;
+            }
         }
 
         // ================================================================== dessin : helpers
@@ -998,8 +1080,8 @@ namespace Kartamania
             sb.Draw(tex, center, null, tint, rotation, new Vector2(tex.Width * 0.5f, tex.Height * 0.5f),
                     diameter / tex.Width, SpriteEffects.None, 0f);
 
-        void Text(string s, float x, float y, int scale, Color c, bool center = false) =>
-            PixelFont.Draw(sb, pixel, s, (int)x, (int)y, scale, c, center);
+        void Text(string s, float x, float y, int scale, Color c, bool center = false, bool shadow = true) =>
+            PixelFont.Draw(sb, pixel, s, (int)x, (int)y, scale, c, center, shadow);
 
         /// <summary>Panneau sombre derrière des commandes pour qu'elles restent bien lisibles.</summary>
         void HintPanel(string[] lines, float centerX, float bottomY, int scale, Color color)
@@ -1030,7 +1112,14 @@ namespace Kartamania
             ? new[] { Loc.Get("HINT_PAUSE_PAD_1"), Loc.Get("HINT_PAUSE_PAD_2"), Loc.Get("HINT_PAUSE_PAD_3") }
             : new[] { Loc.Get("HINT_PAUSE_KB_1"), Loc.Get("HINT_PAUSE_KB_2"), Loc.Get("HINT_PAUSE_KB_3") };
 
-        string ResultsHint() => pad.IsConnected ? Loc.Get("HINT_RESULTS_PAD") : Loc.Get("HINT_RESULTS_KB");
+        string ResultsHint()
+        {
+            if (championship == null) return pad.IsConnected ? Loc.Get("HINT_RESULTS_PAD") : Loc.Get("HINT_RESULTS_KB");
+            if (championship.IsLastRace) return pad.IsConnected ? Loc.Get("HINT_CHAMP_FINAL_PAD") : Loc.Get("HINT_CHAMP_FINAL_KB");
+            return pad.IsConnected ? Loc.Get("HINT_CHAMP_RESULTS_PAD") : Loc.Get("HINT_CHAMP_RESULTS_KB");
+        }
+
+        string NextHint(string padKey, string kbKey) => pad.IsConnected ? Loc.Get(padKey) : Loc.Get(kbKey);
 
         static string FormatTime(float t) =>
             string.Format(CultureInfo.InvariantCulture, "{0:00}:{1:00.0}", (int)(t / 60f), t % 60f);
@@ -1079,7 +1168,15 @@ namespace Kartamania
                 Window.Title = "Kartamania - " + fps + " FPS";
             }
 
-            if (state == State.Menu || race == null)
+            if (state == State.Standings && championship != null)
+            {
+                DrawStandings();
+            }
+            else if (state == State.Podium && championship != null)
+            {
+                DrawPodium();
+            }
+            else if (state == State.Menu || race == null)
             {
                 DrawMenu();
             }
@@ -1106,6 +1203,7 @@ namespace Kartamania
             switch (r)
             {
                 case Row.Play: return Loc.Get("ROW_PLAY");
+                case Row.Championship: return Loc.Get("ROW_CHAMPIONSHIP");
                 case Row.Settings: return Loc.Get("ROW_SETTINGS");
                 case Row.Back: return Loc.Get("ROW_BACK");
                 case Row.Track: return Loc.Get("LABEL_TRACK") + ": < " + Loc.TrackName(tracks[cfg.Track].Def.Name) + " >";
@@ -1782,13 +1880,22 @@ namespace Kartamania
             Color tc = p.Eliminated ? Color.OrangeRed : (won ? new Color(255, 215, 60) : Color.White);
             Text(title, w * 0.5f, h * 0.035f, T(14), tc, true);
 
+            bool inChampionship = championship != null;
+            if (inChampionship)
+            {
+                string roundLine = Loc.Get("CHAMP_TITLE") + " - " + Loc.Get("CHAMP_ROUND")
+                                 + (championship.Round + 1) + "/" + championship.RoundCount
+                                 + " - " + Loc.TrackName(race.Track.Def.Name);
+                Text(roundLine, w * 0.5f, h * 0.098f, T(3), new Color(255, 215, 60), true);
+            }
+
             float best = cfg.GetBestTime(race.Track.Def.Name, race.TotalLaps, cfg.Difficulty);
             string bestLine = Loc.Get("BEST_TIME") + race.TotalLaps + Loc.Get("BEST_LAPS") + (best > 0f ? FormatTime(best) : "--:--.-");
-            Text(bestLine, w * 0.5f, h * 0.115f, T(4), new Color(255, 215, 60), true);
-            if (newRecord) Text(Loc.Get("NEW_RECORD"), w * 0.5f, h * 0.155f, T(3), new Color(120, 255, 120), true);
+            Text(bestLine, w * 0.5f, h * (inChampionship ? 0.145f : 0.115f), T(4), new Color(255, 215, 60), true);
+            if (newRecord) Text(Loc.Get("NEW_RECORD"), w * 0.5f, h * (inChampionship ? 0.185f : 0.155f), T(3), new Color(120, 255, 120), true);
 
             int count = Math.Max(1, race.Ranking.Count);
-            float top = h * 0.20f;
+            float top = h * (inChampionship ? 0.22f : 0.20f);
             float bottom = h * 0.86f;
             float row = Math.Min(T(104), (bottom - top) / count);
             float faceD = Math.Min(row * 0.72f, T(66));
@@ -1801,6 +1908,9 @@ namespace Kartamania
             float faceX = boxLeft + T(85);
             float nameX = boxLeft + T(150);
             float statusRight = boxRight - T(24);
+            float pointsRight = boxRight - T(210);
+            if (inChampionship)
+                Text(Loc.Get("CHAMP_POINTS"), pointsRight, top - T(30), T(3), new Color(120, 255, 120), true);
 
             for (int i = 0; i < race.Ranking.Count; i++)
             {
@@ -1823,9 +1933,152 @@ namespace Kartamania
                 string right = status + kills;
                 Text(right, statusRight - PixelFont.Measure(right, ts), cy + textYOff, ts,
                      k.Eliminated ? Color.OrangeRed : Color.White);
+
+                if (inChampionship)
+                {
+                    int gained = championship.PointsFor(race.Karts.IndexOf(k), championship.Round);
+                    string points = gained > 0 ? "+" + gained + Loc.Get("CHAMP_PTS") : "-";
+                    Text(points, pointsRight - PixelFont.Measure(points, ts), cy + textYOff, ts,
+                         gained > 0 ? new Color(120, 255, 120) : Color.White * 0.6f);
+                }
             }
 
             HintPanel(new[] { ResultsHint() }, w * 0.5f, h * 0.97f, T(3), Color.White);
+        }
+
+        void DrawCeremonyBackdrop(int w, int h)
+        {
+            GraphicsDevice.Clear(new Color(18, 22, 40));
+        }
+
+        void DrawCeremonyStrips(int w, int h)
+        {
+            int cell = T(24);
+            for (int i = 0; i * cell < w; i++)
+            {
+                Color c = (i % 2 == 0) ? Color.White * 0.8f : Color.Black * 0.5f;
+                Rect(i * cell, 0, cell, cell, c);
+                Rect(i * cell, h - cell, cell, cell, c);
+            }
+        }
+
+        void DrawStandings()
+        {
+            int w = W, h = H;
+            DrawCeremonyBackdrop(w, h);
+            sb.Begin(samplerState: SamplerState.LinearClamp);
+            DrawCeremonyStrips(w, h);
+
+            Text(Loc.Get("CHAMP_STANDINGS"), w * 0.5f, h * 0.045f, T(12), new Color(255, 215, 60), true);
+            Text(Loc.Get("CHAMP_WORLD"), w * 0.5f, h * 0.125f, T(3), Color.White * 0.85f, true);
+
+            List<Championship.Driver> order = championship.Standings();
+            float left = w * 0.10f;
+            float nameX = left + T(95);
+            float roundsLeft = w * 0.44f;
+            float roundW = T(95);
+            float totalX = w * 0.80f;
+            float top = h * 0.19f;
+            float rowH = Math.Min(T(66), (h * 0.85f - top - T(45)) / Math.Max(1, order.Count));
+
+            Text(Loc.Get("LABEL_PLAYER"), nameX, top, T(3), Color.White * 0.75f);
+            for (int r = 0; r < championship.RoundCount; r++)
+                Text((r + 1).ToString(), roundsLeft + roundW * (r + 0.5f), top, T(3), Color.White * 0.75f, true);
+            Text(Loc.Get("CHAMP_TOTAL"), totalX, top, T(3), new Color(255, 215, 60), true);
+
+            for (int i = 0; i < order.Count; i++)
+            {
+                Championship.Driver d = order[i];
+                float cy = top + T(45) + rowH * (i + 0.5f);
+                float ty = cy - T(10);
+                Color rankColor = i == 0 ? new Color(255, 215, 60) : i == 1 ? new Color(200, 210, 225) : i == 2 ? new Color(210, 150, 95) : Color.White;
+
+                if (d.IsPlayer) Rect(left, cy - rowH * 0.45f, w * 0.80f, rowH * 0.9f, Color.White * 0.12f);
+                Text((i + 1) + ".", left + T(12), ty, T(3), rankColor);
+                Face(d.Face, new Vector2(left + T(52), cy), Math.Min(rowH * 0.75f, T(48)), 0f, Color.White);
+                Text(d.Name, nameX, ty, T(3), d.IsPlayer ? new Color(255, 215, 60) : Color.White);
+
+                for (int r = 0; r < championship.RoundCount; r++)
+                {
+                    string pts = d.Points[r] > 0 ? d.Points[r].ToString() : "-";
+                    Text(pts, roundsLeft + roundW * (r + 0.5f), ty, T(3),
+                         d.Points[r] > 0 ? Color.White : Color.White * 0.45f, true);
+                }
+                string total = d.Total.ToString();
+                Text(total, totalX - PixelFont.Measure(total, T(4)), ty - T(2), T(4), new Color(255, 215, 60));
+            }
+
+            HintPanel(new[] { NextHint("HINT_STANDINGS_PAD", "HINT_STANDINGS_KB") }, w * 0.5f, h * 0.97f, T(3), Color.White);
+            sb.End();
+        }
+
+        void DrawPodium()
+        {
+            int w = W, h = H;
+            DrawCeremonyBackdrop(w, h);
+
+            List<Championship.Driver> order = championship.Standings();
+            float[] slotX = { w * 0.50f, w * 0.34f, w * 0.66f };
+            float[] blockTop = { h * 0.58f, h * 0.68f, h * 0.74f };
+            float[] kartY = { h * 0.49f, h * 0.59f, h * 0.65f };
+            Color[] blockColor =
+            {
+                new Color(230, 185, 55), new Color(190, 200, 215), new Color(190, 120, 75),
+            };
+            float baseY = h * 0.90f;
+            float blockW = w * 0.13f;
+
+            sb.Begin(samplerState: SamplerState.LinearClamp);
+            DrawCeremonyStrips(w, h);
+            Text(Loc.Get("CHAMP_PODIUM"), w * 0.5f, h * 0.045f, T(14), new Color(255, 215, 60), true);
+            for (int place = 1; place <= 3 && place <= order.Count; place++)
+            {
+                float x = slotX[place - 1];
+                float y = blockTop[place - 1];
+                Rect(x - blockW * 0.5f, y, blockW, baseY - y, blockColor[place - 1]);
+                Rect(x - blockW * 0.5f, y, blockW, T(6), Color.White * 0.8f);
+                Text(place.ToString(), x, y + (baseY - y) * 0.5f, T(9), Color.White, true, false);
+            }
+            sb.End();
+
+            float kartW = T(200);
+            float scale = kartW / 110f;
+            sb.Begin(samplerState: SamplerState.LinearClamp, transformMatrix: Matrix.CreateScale(scale, scale, 1f));
+            float savedRot = camRot;
+            camRot = 0f;
+            for (int place = Math.Min(3, order.Count); place >= 1; place--)
+            {
+                Championship.Driver d = order[place - 1];
+                var k = new Kart
+                {
+                    Name = d.Name, Face = d.Face, Color = d.Color, IsPlayer = d.IsPlayer,
+                    Pos = new Vector2(slotX[place - 1] / scale, kartY[place - 1] / scale),
+                    Angle = 0f, Speed = 0f,
+                };
+                DrawKart(k);
+            }
+            camRot = savedRot;
+            sb.End();
+
+            sb.Begin(samplerState: SamplerState.LinearClamp);
+            for (int place = 1; place <= 3 && place <= order.Count; place++)
+            {
+                Championship.Driver d = order[place - 1];
+                float x = slotX[place - 1];
+                float y = kartY[place - 1] + kartW * 0.40f;
+                Text(d.Name, x, y, T(4), d.IsPlayer ? new Color(255, 215, 60) : Color.White, true);
+                Text(d.Total + Loc.Get("CHAMP_PTS"), x, y + T(24), T(3), new Color(255, 215, 60), true);
+            }
+            for (int i = 0; i < 80; i++)
+            {
+                float seed = (i * 37 + 11) % 997;
+                float fx = ((seed * 13 % 997) / 997f) * w;
+                float fy = (((seed * 29 % 991) / 991f) * h + anim * (35f + seed % 60f)) % h;
+                Color c = (i % 3 == 0) ? new Color(255, 215, 60) : (i % 3 == 1) ? new Color(255, 90, 90) : new Color(100, 180, 255);
+                Disc(new Vector2(fx, fy), T(5 + i % 4), c * 0.75f);
+            }
+            HintPanel(new[] { NextHint("HINT_PODIUM_PAD", "HINT_PODIUM_KB") }, w * 0.5f, h * 0.97f, T(3), Color.White);
+            sb.End();
         }
     }
 }
