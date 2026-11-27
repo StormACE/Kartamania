@@ -10,6 +10,8 @@ namespace Kartamania
         public bool UseItem;
     }
 
+    public enum ImpactKind { Obstacle, Missile, Mine, Spin }
+
     public sealed class Missile { public Vector2 Pos; public float Angle, Life, Turn; public Kart Owner, Target; }
     public sealed class Mine { public Vector2 Pos; public float Arm, Life; public Kart Owner; }
     public sealed class ItemBox { public Vector2 Pos; public float Respawn; }
@@ -56,6 +58,12 @@ namespace Kartamania
         public bool Over;
 
         public IReadOnlyList<Kart> Ranking => ranking;
+        public Action<ImpactKind> OnPlayerImpact;
+
+        void PlayerImpact(Kart k, ImpactKind kind)
+        {
+            if (k.IsPlayer && OnPlayerImpact != null) OnPlayerImpact(kind);
+        }
 
         readonly float difficultySpeed;
         readonly float aiStrength;
@@ -672,6 +680,7 @@ namespace Kartamania
                         if (Vector2.DistanceSquared(k.Pos, m.Pos) < rr)
                         {
                             Hit(k, m.Owner, "MISSILE");
+                            PlayerImpact(k, ImpactKind.Missile);
                             dead = true;
                             break;
                         }
@@ -710,6 +719,7 @@ namespace Kartamania
                         if (Vector2.DistanceSquared(k.Pos, m.Pos) < rr)
                         {
                             Hit(k, m.Owner, "MINE");
+                            PlayerImpact(k, ImpactKind.Mine);
                             dead = true;
                             break;
                         }
@@ -806,6 +816,7 @@ namespace Kartamania
             victim.Vel += n * (strength * 0.5f);
             victim.SpinVisual += side * 6f;
             ApplyCollisionSlow(attacker, KartSlowDuration * 0.5f);
+            PlayerImpact(victim, ImpactKind.Spin);
             Burst(victim.Pos, Color.Orange, 12, 220f);
             Sfx.ObstacleCollision(victim.IsPlayer);
             Say(attacker.Name + Loc.Get("MSG_HIT") + victim.Name + "!");
@@ -903,6 +914,7 @@ namespace Kartamania
                     if (k.SpinTimer <= 0f)
                     {
                         k.SpinTimer = 0.7f;
+                        PlayerImpact(k, ImpactKind.Obstacle);
                         Burst(o, Color.Orange, 8, 160f);
                         Sfx.ObstacleCollision(k.IsPlayer);
                     }

@@ -76,6 +76,7 @@ namespace Kartamania
         float steerSmooth;
         float anim;
         float stickRepeatX, stickRepeatY;   // temporisation de répétition du stick dans le menu
+        float rumbleTimer;
 
         Vector2 camPos;
         float camAngle, camRot, zoom = 1f;
@@ -102,7 +103,7 @@ namespace Kartamania
             gfx.DeviceResetting += (s, e) => PixelFont.Reset();
             IsMouseVisible = false;
             Window.Title = "Kartamania";
-            Exiting += (s, e) => { MusicPlayer.Stop(); Sfx.Stop(); cfg?.Save(); };
+            Exiting += (s, e) => { StopRumble(); MusicPlayer.Stop(); Sfx.Stop(); cfg?.Save(); };
         }
 
         // ================================================================== initialisation
@@ -344,12 +345,43 @@ namespace Kartamania
         bool Press(Keys k) => kb.IsKeyDown(k) && !pkb.IsKeyDown(k);
         bool PadPress(Buttons b) => pad.IsConnected && pad.IsButtonDown(b) && !ppad.IsButtonDown(b);
 
+        void StopRumble()
+        {
+            rumbleTimer = 0f;
+            if (pad.IsConnected) GamePad.SetVibration(PlayerIndex.One, 0f, 0f);
+        }
+
+        void Rumble(ImpactKind kind)
+        {
+            if (!pad.IsConnected) return;
+            float left, right, duration;
+            switch (kind)
+            {
+                case ImpactKind.Missile: left = 0.9f; right = 0.65f; duration = 0.35f; break;
+                case ImpactKind.Mine: left = 1f; right = 0.8f; duration = 0.42f; break;
+                case ImpactKind.Spin: left = 0.7f; right = 0.5f; duration = 0.30f; break;
+                default: left = 0.55f; right = 0.35f; duration = 0.18f; break;
+            }
+            rumbleTimer = duration;
+            GamePad.SetVibration(PlayerIndex.One, left, right);
+        }
+
+        void UpdateRumble(float dt)
+        {
+            if (rumbleTimer <= 0f) return;
+            rumbleTimer -= dt;
+            if (rumbleTimer <= 0f && pad.IsConnected) GamePad.SetVibration(PlayerIndex.One, 0f, 0f);
+        }
+
         protected override void Update(GameTime gameTime)
         {
             float dt = Math.Min((float)gameTime.ElapsedGameTime.TotalSeconds, 0.05f);
             anim += dt;
             kb = Keyboard.GetState();
             pad = GamePad.GetState(PlayerIndex.One);
+
+            if (state == State.Racing) UpdateRumble(dt);
+            else if (rumbleTimer > 0f) StopRumble();
 
             bool alt = kb.IsKeyDown(Keys.LeftAlt) || kb.IsKeyDown(Keys.RightAlt);
             if (Press(Keys.F11) || (alt && Press(Keys.Enter)))
@@ -533,7 +565,9 @@ namespace Kartamania
 
         void BeginRace(IList<RacerInfo> racers, int trackIndex)
         {
+            StopRumble();
             race = new Race(tracks[trackIndex], racers, cfg.Laps, DifficultyStrength[cfg.Difficulty], DifficultyAiStrength[cfg.Difficulty], DifficultyAiAggression[cfg.Difficulty], rng);
+            race.OnPlayerImpact = Rumble;
             camTarget = null;
             camAngle = race.Player.Angle;
             camPos = race.Player.Pos + race.Player.Heading * 260f;
