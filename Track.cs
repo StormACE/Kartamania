@@ -254,7 +254,7 @@ namespace Kartamania
         {
             Name = "Montagnes du québec",
             Width = 240f,
-            Grip = 0.35f,
+            Grip = 0.70f,
             Theme = TrackTheme.Winter,
             Grass = new Color(205, 225, 238), Rough = new Color(170, 196, 214), Road = new Color(66, 72, 92),
             Points = new[] { V(-1500, -700), V(-500, -950), V(500, -550), V(1500, -950), V(2200, -250), V(1650, 550), V(600, 400), V(-100, 1000), V(-1100, 900), V(-1900, 350), V(-2150, -300) },
@@ -270,7 +270,7 @@ namespace Kartamania
         {
             Name = "Rallye Forestier",
             Width = 230f,
-            Grip = 0.50f,
+            Grip = 0.70f,
             RoadMarks = false,
             RockDots = true,
             Forest = true,
@@ -311,7 +311,7 @@ namespace Kartamania
             Name = "Étoile du Nord",
             Width = 220f,
             Scale = 1.25f,
-            Grip = 0.35f,
+            Grip = 0.70f,
             DenseTrees = true,
             Theme = TrackTheme.Winter,
             Grass = new Color(235, 242, 250), Rough = new Color(176, 200, 170), Road = new Color(150, 165, 175),
