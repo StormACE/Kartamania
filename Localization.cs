@@ -29,7 +29,7 @@ namespace Kartamania
             { "HINT_PAUSE_KB_3", new[] { "M: MENU", "M: MENU" } },
             { "HINT_RESULTS_PAD", new[] { "A: MENU   Y: REJOUER", "A: MENU   Y: PLAY AGAIN" } },
             { "HINT_RESULTS_KB", new[] { "ENTRÉE: MENU   R: REJOUER", "ENTER: MENU   R: PLAY AGAIN" } },
-            { "ROW_PLAY", new[] { "JOUER", "PLAY" } },
+            { "ROW_PLAY", new[] { "Course rapide", "Quick Race" } },
             { "LABEL_TRACK", new[] { "PISTE", "TRACK" } },
             { "LABEL_PLAYER", new[] { "JOUEUR", "PLAYER" } },
             { "LABEL_KART_COLOR", new[] { "COULEUR DU KART", "KART COLOR" } },
