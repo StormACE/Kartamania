@@ -16,11 +16,11 @@ namespace Kartamania
         enum State { Menu, Racing, Paused, Results }
         enum Row { Play, Settings, Track, Player, KartColor, Difficulty, Laps, Pilots, Resolution, Display, VSync, Fps, Language, Back, Quit }
 
-        static readonly Row[] MainRows = { Row.Play, Row.Settings, Row.Quit };
+        static readonly Row[] MainRows = { Row.Play, Row.Track, Row.Player, Row.KartColor, Row.Settings, Row.Quit };
         static readonly Row[] SettingsRows =
         {
-            Row.Track, Row.Player, Row.KartColor, Row.Difficulty, Row.Laps, Row.Pilots,
-            Row.Resolution, Row.Display, Row.VSync, Row.Fps, Row.Language, Row.Back,
+            Row.Difficulty, Row.Laps, Row.Pilots, Row.Resolution, Row.Display,
+            Row.VSync, Row.Fps, Row.Language, Row.Back,
         };
         static readonly float[] DifficultyStrength = { 0.88f, 1.16f, 1.33f };
         static readonly float[] DifficultyAiStrength = { 0.90f, 0.90f, 1.062f };
@@ -434,9 +434,11 @@ namespace Kartamania
                     break;
                 case Row.Track:
                     if (dir != 0) cfg.Track = M.Wrap(cfg.Track + dir, tracks.Length);
+                    else if (enter) StartRace();
                     break;
                 case Row.Player:
                     if (dir != 0) cfg.Player = M.Wrap(cfg.Player + dir, faces.Count);
+                    else if (enter) StartRace();
                     break;
                 case Row.KartColor:
                     if (dir != 0)
@@ -444,6 +446,7 @@ namespace Kartamania
                         cfg.KartColor = M.Wrap(cfg.KartColor + dir, KartColors.Length);
                         UpdatePlayerPlaceholder();
                     }
+                    else if (enter) StartRace();
                     break;
                 case Row.Difficulty:
                     if (dir != 0) cfg.Difficulty = M.Wrap(cfg.Difficulty + dir, DifficultyStrength.Length);

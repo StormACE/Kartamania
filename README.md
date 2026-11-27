@@ -99,10 +99,10 @@ bin\x64\Release\net10.0\Kartamania.exe
 | Piste | Ambiance | Particularités |
 | --- | --- | --- |
 | Circuit Ovale | Gazon vert | Arbres éparpillés hors piste |
-| Montagnes du québec | Hiver / glace | Adhérence réduite (`Grip = 0.25`) |
+| Montagnes du québec | Hiver / glace | Adhérence réduite (`Grip = 0.35`) |
 | Rallye Forestier | Terre battue | Chalets, rochers, arbres denses (`Grip = 0.50`) |
 | Désert du Sud | Sable | Cactus, buissons et deux couches de décor |
-| Étoile du Nord | Gazon enneigé | Flocons, bancs de neige, chalets enneigés, glace (`Grip = 0.25`) |
+| Étoile du Nord | Gazon enneigé | Flocons, bancs de neige, chalets enneigés, glace (`Grip = 0.35`) |
 | Huit de la Ville | Urbain | Immeubles, croisements et lampadaires |
 
 ---
@@ -130,7 +130,7 @@ L’adhérence est définie par `TrackDef.Grip` dans [Track.cs](Track.cs). Plus 
 
 - `1.0` : valeur par défaut
 - `0.50` : Rallye Forestier
-- `0.25` : Montagnes du québec et Étoile du Nord
+- `0.35` : Montagnes du québec et Étoile du Nord
 
 </details>
 
