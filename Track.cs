@@ -314,7 +314,7 @@ namespace Kartamania
             Grip = 0.35f,
             DenseTrees = true,
             Theme = TrackTheme.Winter,
-            Grass = new Color(78, 126, 70), Rough = new Color(176, 200, 170), Road = new Color(150, 165, 175),
+            Grass = new Color(235, 242, 250), Rough = new Color(176, 200, 170), Road = new Color(150, 165, 175),
             Points = new[]
             {
                 V(0, -1500), V(900, -1200), V(1600, -600), V(1200, 0), V(2000, 600), V(1500, 1300), V(400, 1100),
