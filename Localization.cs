@@ -124,9 +124,9 @@ namespace Kartamania
 
         static readonly Dictionary<string, string> TrackNames = new Dictionary<string, string>
         {
-            { "Circuit du Salon", "Living Room Circuit" },
-            { "Lac du Chalet", "Cabin Lake" },
-            { "Rallye du Sous-sol", "Basement Rally" },
+            { "Circuit Ovale", "Oval Circuit" },
+            { "Montagnes du québec", "Quebec Mountains" },
+            { "Rallye Forestier", "Forest Rally" },
             { "Désert du Sud", "Southern Desert" },
             { "Étoile du Nord", "Northern Star" },
             { "Huit de la Ville", "City Figure Eight" },
