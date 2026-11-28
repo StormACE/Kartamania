@@ -14,13 +14,13 @@ namespace Kartamania
     public sealed class KartamaniaGame : Game
     {
         enum State { Menu, Racing, Paused, Results, Standings, Podium }
-        enum Row { Play, Championship, Settings, Track, Player, KartColor, Difficulty, Laps, Pilots, Resolution, Display, VSync, Fps, Language, Back, Quit }
+        enum Row { Play, Championship, Settings, Track, Player, KartColor, Difficulty, Laps, Pilots, Resolution, Display, VSync, Fps, SpeedUnit, Language, Back, Quit }
 
         static readonly Row[] MainRows = { Row.Play, Row.Championship, Row.Track, Row.Player, Row.KartColor, Row.Laps, Row.Pilots, Row.Settings, Row.Quit };
         static readonly Row[] SettingsRows =
         {
             Row.Difficulty, Row.Resolution, Row.Display,
-            Row.VSync, Row.Fps, Row.Language, Row.Back,
+            Row.VSync, Row.Fps, Row.SpeedUnit, Row.Language, Row.Back,
         };
         static readonly float[] DifficultyStrength = { 0.88f, 1.16f, 1.33f };
         static readonly float[] DifficultyAiStrength = { 0.90f, 0.90f, 1.062f };
@@ -514,6 +514,9 @@ namespace Kartamania
                         cfg.FpsIndex = M.Wrap(cfg.FpsIndex + dir, GameSettings.FpsCaps.Length);
                         ApplyGraphics();
                     }
+                    break;
+                case Row.SpeedUnit:
+                    if (dirEdge != 0 || enter) { cfg.Mph = !cfg.Mph; cfg.Save(); }
                     break;
                 case Row.Language:
                     if (dirEdge != 0 || enter)
@@ -1252,6 +1255,7 @@ namespace Kartamania
                 case Row.Fps:
                     int cap = GameSettings.FpsCaps[cfg.FpsIndex];
                     return Loc.Get("LABEL_FPS_LIMIT") + ": < " + (cap > 0 ? cap.ToString() : Loc.Get("UNLIMITED")) + " >";
+                case Row.SpeedUnit: return Loc.Get("LABEL_SPEED_UNIT") + ": < " + (cfg.Mph ? "MPH" : "KM/H") + " >";
                 case Row.Language: return Loc.Get("LANGUAGE") + ": < " + (cfg.Language == 0 ? "FRANÇAIS" : "ENGLISH") + " >";
                 default: return Loc.Get("QUIT");
             }
@@ -1786,7 +1790,8 @@ namespace Kartamania
 
             // Bas droite : vitesse.
             float speedRef = Race.BaseSpeed * DifficultyStrength[DifficultyStrength.Length - 1];
-            string spd = (int)(Math.Abs(view.Speed) / speedRef * 125f) + " KM/H";
+            float kmh = Math.Abs(view.Speed) / speedRef * 125f;
+            string spd = (int)(cfg.Mph ? kmh * 0.621371f : kmh) + (cfg.Mph ? " MPH" : " KM/H");
             Text(spd, w - m - PixelFont.Measure(spd, T(5)), h - m - T(5) * 5f, T(5), Color.White);
 
             // Bas gauche : mini-carte.

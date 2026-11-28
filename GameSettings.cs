@@ -21,6 +21,7 @@ namespace Kartamania
         public bool VSync = false;
         public int FpsIndex = 1;            // 120 FPS par défaut
         public int Track, Player, Difficulty = 1, Laps = 3, RacerCount = 6, Language, KartColor;
+        public bool Mph;
         public readonly Dictionary<string, float> BestTimes = new Dictionary<string, float>();
 
         static string FilePath => Path.Combine(AppContext.BaseDirectory, "settings.txt");
@@ -78,6 +79,7 @@ namespace Kartamania
                         case "laps": if (isInt) s.Laps = Math.Max(1, Math.Min(20, n)); break;
                         case "pilots": if (isInt) s.RacerCount = Math.Max(1, Math.Min(10, n)); break;
                         case "language": if (isInt) s.Language = Math.Max(0, Math.Min(1, n)); break;
+                        case "mph": s.Mph = val == "1"; break;
                         case "best":
                             {
                                 string[] parts = val.Split('|');
@@ -122,7 +124,7 @@ namespace Kartamania
                     "display=" + DisplayMode, "fullscreen=" + (Fullscreen ? 1 : 0), "borderless=" + (Borderless ? 1 : 0),
                     "vsync=" + (VSync ? 1 : 0), "fps=" + FpsIndex,
                     "track=" + Track, "player=" + Player, "kartcolor=" + KartColor, "difficulty=" + Difficulty, "laps=" + Laps,
-                    "pilots=" + RacerCount, "language=" + Language,
+                    "pilots=" + RacerCount, "language=" + Language, "mph=" + (Mph ? 1 : 0),
                 };
                 foreach (var entry in BestTimes)
                     lines.Add("best=" + entry.Key + "|" + entry.Value.ToString("R", CultureInfo.InvariantCulture));

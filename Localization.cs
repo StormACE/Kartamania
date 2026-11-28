@@ -69,6 +69,7 @@ namespace Kartamania
             { "LABEL_PILOTS", new[] { "PILOTES", "DRIVERS" } },
             { "LABEL_DISPLAY", new[] { "AFFICHAGE", "DISPLAY" } },
             { "LABEL_FPS_LIMIT", new[] { "LIMITE FPS", "FPS LIMIT" } },
+            { "LABEL_SPEED_UNIT", new[] { "UNITÉ VITESSE", "SPEED UNIT" } },
             { "FULLSCREEN", new[] { "PLEIN ÉCRAN", "FULLSCREEN" } },
             { "BORDERLESS", new[] { "SANS BORDURE", "BORDERLESS" } },
             { "WINDOW", new[] { "FENÊTRE", "WINDOW" } },

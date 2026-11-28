@@ -212,10 +212,11 @@ Le sous-menu **Paramètres** permet de modifier :
 - l’affichage : fenêtre, sans bordure ou plein écran ;
 - la VSync ;
 - la limite de FPS (`60`, `120`, `144`, `240`, illimité) ;
+- l’unité de vitesse affichée (`KM/H` ou `MPH`) ;
 - la langue ;
 - `Retour` pour enregistrer et revenir au menu principal.
 
-Le fichier `settings.txt`, créé à côté de l’exécutable, conserve `width`, `height`, `display`, `fullscreen`, `borderless`, `vsync`, `fps`, `track`, `player`, `kartcolor`, `difficulty`, `laps`, `pilots`, `language` et les meilleurs temps (`best`). Les changements sont généralement écrits au retour dans le menu, au lancement d’une course, avec **Quitter** ou immédiatement pour la langue. Le championnat n’y est pas sauvegardé.
+Le fichier `settings.txt`, créé à côté de l’exécutable, conserve `width`, `height`, `display`, `fullscreen`, `borderless`, `vsync`, `fps`, `track`, `player`, `kartcolor`, `difficulty`, `laps`, `pilots`, `language`, `mph` et les meilleurs temps (`best`). Les changements sont généralement écrits au retour dans le menu, au lancement d’une course, avec **Quitter** ou immédiatement pour la langue. Le championnat n’y est pas sauvegardé.
 
 Pour obtenir 120 fps, il faut un écran 120 Hz ou plus et la VSync désactivée.
 
