@@ -566,10 +566,10 @@ namespace Kartamania
             return racers;
         }
 
-        void BeginRace(IList<RacerInfo> racers, int trackIndex)
+        void BeginRace(IList<RacerInfo> racers, int trackIndex, IList<int> gridOrder = null)
         {
             StopRumble();
-            race = new Race(tracks[trackIndex], racers, cfg.Laps, DifficultyStrength[cfg.Difficulty], DifficultyAiStrength[cfg.Difficulty], DifficultyAiAggression[cfg.Difficulty], rng);
+            race = new Race(tracks[trackIndex], racers, cfg.Laps, DifficultyStrength[cfg.Difficulty], DifficultyAiStrength[cfg.Difficulty], DifficultyAiAggression[cfg.Difficulty], rng, gridOrder);
             race.OnPlayerImpact = Rumble;
             camTarget = null;
             camAngle = race.Player.Angle;
@@ -604,7 +604,7 @@ namespace Kartamania
         {
             if (championship == null || championship.IsLastRace) return;
             championship.Round++;
-            BeginRace(championship.Racers, championship.Round);
+            BeginRace(championship.Racers, championship.Round, championship.GridFromLastRace());
         }
 
         PlayerInput ReadInput(float dt)
@@ -735,7 +735,7 @@ namespace Kartamania
             }
             if (Press(Keys.R) || PadPress(Buttons.Y))
             {
-                if (championship != null) BeginRace(championship.Racers, championship.Round);
+                if (championship != null) BeginRace(championship.Racers, championship.Round, race.GridOrder);
                 else StartRace();
             }
         }

@@ -73,6 +73,23 @@ namespace Kartamania
             }
         }
 
+        public List<int> GridFromLastRace()
+        {
+            if (Round <= 0) return null;
+            int previous = Round - 1;
+            for (int i = 0; i < Drivers.Count; i++)
+                if (Drivers[i].Places[previous] == 0) return null;
+
+            var order = new List<int>();
+            for (int i = 0; i < Drivers.Count; i++) order.Add(i);
+            order.Sort((a, b) =>
+            {
+                int cmp = Drivers[a].Places[previous].CompareTo(Drivers[b].Places[previous]);
+                return cmp != 0 ? cmp : a.CompareTo(b);
+            });
+            return order;
+        }
+
         public int PointsFor(int driverIndex, int round) =>
             driverIndex >= 0 && driverIndex < Drivers.Count && round >= 0 && round < RoundCount
                 ? Drivers[driverIndex].Points[round] : 0;

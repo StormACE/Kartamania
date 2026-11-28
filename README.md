@@ -127,6 +127,7 @@ Le menu principal propose une entrée **Championnat** juste après **Course rapi
 
 - Une course par piste, dans l’ordre du jeu : **6 manches** avec les 6 pistes actuelles.
 - Grille composée du nombre de pilotes défini par le réglage `Pilotes` du menu principal.
+- Grille tirée au sort pour la 1re manche, puis ordre d’arrivée de la manche précédente (le vainqueur part en pole).
 - Barème de points : **25, 18, 15, 12, 10, 8** pour les six premiers, puis 0.
 - Classement calculé par total de points, puis par nombre de victoires, puis par nombre de 2es places, etc.
 - Écrans dédiés : résultats de manche, classement final et podium des trois premiers.

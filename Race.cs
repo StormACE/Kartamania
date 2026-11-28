@@ -53,6 +53,7 @@ namespace Kartamania
         public readonly List<FeedMessage> Feed = new List<FeedMessage>();
         public readonly int TotalLaps;
         public readonly Kart Player;
+        public readonly List<int> GridOrder;
 
         public float Countdown = 3f;
         public float Time;
@@ -77,7 +78,7 @@ namespace Kartamania
         bool rocketStart;
         bool startThrottleHeld;
 
-        public Race(Track track, IList<RacerInfo> racers, int laps, float difficultySpeed, float aiStrength, float aiAggression, Random rng)
+        public Race(Track track, IList<RacerInfo> racers, int laps, float difficultySpeed, float aiStrength, float aiAggression, Random rng, IList<int> gridOrder = null)
         {
             Track = track;
             TotalLaps = laps;
@@ -86,14 +87,33 @@ namespace Kartamania
             this.aiAggression = aiAggression;
             this.rng = rng;
 
-            // Place sur la grille de départ (mélangée).
-            var slots = new List<int>();
-            for (int i = 0; i < racers.Count; i++) slots.Add(i);
-            for (int i = slots.Count - 1; i > 0; i--)
+            // Place sur la grille de départ (ordre imposé ou mélangé).
+            var order = new List<int>();
+            bool validGrid = gridOrder != null && gridOrder.Count == racers.Count;
+            if (validGrid)
             {
-                int j = rng.Next(i + 1);
-                int tmp = slots[i]; slots[i] = slots[j]; slots[j] = tmp;
+                var seen = new bool[racers.Count];
+                for (int i = 0; i < gridOrder.Count; i++)
+                {
+                    int racer = gridOrder[i];
+                    if (racer < 0 || racer >= racers.Count || seen[racer]) { validGrid = false; break; }
+                    seen[racer] = true;
+                }
             }
+            if (validGrid) order.AddRange(gridOrder);
+            else
+            {
+                for (int i = 0; i < racers.Count; i++) order.Add(i);
+                for (int i = order.Count - 1; i > 0; i--)
+                {
+                    int j = rng.Next(i + 1);
+                    int tmp = order[i]; order[i] = order[j]; order[j] = tmp;
+                }
+            }
+            GridOrder = order;
+
+            var slots = new int[racers.Count];
+            for (int slot = 0; slot < order.Count; slot++) slots[order[slot]] = slot;
 
             for (int i = 0; i < racers.Count; i++)
             {
@@ -102,7 +122,7 @@ namespace Kartamania
 
                 int slot = slots[i];
                 int row = slot / 2;
-                float side = (slot % 2 == 0) ? -1f : 1f;
+                float side = (slot % 2 == 0) ? 1f : -1f;
                 int idx = M.Wrap(track.StartIndex - 4 - row * GridRowSpacing, track.N);
 
                 k.Idx = idx;
