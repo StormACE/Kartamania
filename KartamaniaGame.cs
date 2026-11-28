@@ -1785,7 +1785,8 @@ namespace Kartamania
             }
 
             // Bas droite : vitesse.
-            string spd = (int)(view.Vel.Length() * 0.5f) + " KM/H";
+            float speedRef = Race.BaseSpeed * DifficultyStrength[DifficultyStrength.Length - 1];
+            string spd = (int)(Math.Abs(view.Speed) / speedRef * 125f) + " KM/H";
             Text(spd, w - m - PixelFont.Measure(spd, T(5)), h - m - T(5) * 5f, T(5), Color.White);
 
             // Bas gauche : mini-carte.
