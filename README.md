@@ -39,7 +39,7 @@
 ## Fonctionnalités
 
 - Course arcade de **1 à 10 pilotes** en course rapide, avec visages réels ou pilotes « robot ».
-- **Championnat** de 6 manches : 10 pilotes, points par course, classement final et podium.
+- **Championnat** de 6 manches : nombre de pilotes choisi dans le menu, points par course, classement final et podium.
 - Trois niveaux de difficulté avec IA, agressivité et vitesse adaptées.
 - Karts entièrement dessinés en code, avec **10 couleurs** sélectionnables.
 - Objets : missile à tête chercheuse, mine, turbo, bouclier et cœur de soin.
@@ -126,7 +126,7 @@ La course utilise la piste, le pilote, la couleur, le nombre de tours, la diffic
 Le menu principal propose une entrée **Championnat** juste après **Course rapide**.
 
 - Une course par piste, dans l’ordre du jeu : **6 manches** avec les 6 pistes actuelles.
-- Grille fixe de **10 pilotes**, indépendamment du réglage `Pilotes`.
+- Grille composée du nombre de pilotes défini par le réglage `Pilotes` du menu principal.
 - Barème de points : **25, 18, 15, 12, 10, 8** pour les six premiers, puis 0.
 - Classement calculé par total de points, puis par nombre de victoires, puis par nombre de 2es places, etc.
 - Écrans dédiés : résultats de manche, classement final et podium des trois premiers.

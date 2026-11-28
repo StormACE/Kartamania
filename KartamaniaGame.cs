@@ -592,7 +592,7 @@ namespace Kartamania
         void StartChampionship()
         {
             cfg.Save();
-            championship = new Championship(BuildRacers(KartColors.Length), tracks.Length);
+            championship = new Championship(BuildRacers(cfg.RacerCount), tracks.Length);
             championship.Round = 0;
             BeginRace(championship.Racers, championship.Round);
         }
