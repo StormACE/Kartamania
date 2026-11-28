@@ -598,6 +598,7 @@ namespace Kartamania
                     break;
                 case ItemType.Shield:
                     k.ShieldTimer = 8f;
+                    k.SpinTimer = 0f;
                     break;
                 case ItemType.Heart:
                     if (k.Hp < Kart.MaxHp)
@@ -681,8 +682,9 @@ namespace Kartamania
                         if (k.Eliminated || k.Finished || k == m.Owner) continue;
                         if (Vector2.DistanceSquared(k.Pos, m.Pos) < rr)
                         {
+                            bool protectedKart = k.ShieldTimer > 0f || k.Invuln > 0f;
                             Hit(k, m.Owner, "MISSILE");
-                            PlayerImpact(k, ImpactKind.Missile);
+                            if (!protectedKart) PlayerImpact(k, ImpactKind.Missile);
                             dead = true;
                             break;
                         }
@@ -720,8 +722,9 @@ namespace Kartamania
                         if (k == m.Owner && m.Arm > 0f) continue;
                         if (Vector2.DistanceSquared(k.Pos, m.Pos) < rr)
                         {
+                            bool protectedKart = k.ShieldTimer > 0f || k.Invuln > 0f;
                             Hit(k, m.Owner, "MINE");
-                            PlayerImpact(k, ImpactKind.Mine);
+                            if (!protectedKart) PlayerImpact(k, ImpactKind.Mine);
                             dead = true;
                             break;
                         }
@@ -844,6 +847,8 @@ namespace Kartamania
                     a.Pos -= n * push;
                     b.Pos += n * push;
 
+                    if (a.ShieldTimer > 0f || b.ShieldTimer > 0f) continue;
+
                     float rel = Vector2.Dot(a.Vel - b.Vel, n);
                     if (rel > 0f)
                     {
@@ -900,6 +905,7 @@ namespace Kartamania
                     continue;
                 }
 
+                bool shielded = k.ShieldTimer > 0f;
                 bool touching = false;
                 foreach (Vector2 o in Track.ObstaclePos)
                 {
@@ -912,13 +918,16 @@ namespace Kartamania
                     k.Pos = o + n * (min + ObstacleBounceDistance);
                     float vn = Vector2.Dot(k.Vel, n);
                     if (vn < 0f) k.Vel -= n * (vn * ObstacleBounceFactor);
-                    ApplyCollisionSlow(k, ObstacleSlowDuration);
+                    if (!shielded) ApplyCollisionSlow(k, ObstacleSlowDuration);
                     if (k.SpinTimer <= 0f)
                     {
-                        k.SpinTimer = 0.7f;
-                        PlayerImpact(k, ImpactKind.Obstacle);
                         Burst(o, Color.Orange, 8, 160f);
                         Sfx.ObstacleCollision(k.IsPlayer);
+                        if (!shielded)
+                        {
+                            k.SpinTimer = 0.7f;
+                            PlayerImpact(k, ImpactKind.Obstacle);
+                        }
                     }
                 }
 

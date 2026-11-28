@@ -161,7 +161,7 @@ La chute de neige est spécifique à **Étoile du Nord** ; **Montagnes du québe
 | Missile | Cherche le kart devant toi |
 | Mine | Reste derrière toi et explose au passage |
 | Turbo | Accélère immédiatement |
-| Bouclier | Bloque la prochaine attaque |
+| Bouclier | Invincible 8 s : armes et chocs sans dégât ; rebond sur obstacle sans spin ni ralentissement |
 | Cœur | Restaure un point de vie |
 
 Chaque kart commence avec **4 points de vie**. À zéro, il est éliminé.
