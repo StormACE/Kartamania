@@ -27,6 +27,8 @@ namespace Kartamania
         public const float BaseSpeed = 480f;       // vitesse max d'un kart (unités/seconde)
         public const float MissileSpeed = 980f;
         public const float ObstacleRadius = 26f;
+        public const float ObstacleBounceDistance = 18f;
+        public const float ObstacleBounceFactor = 2.2f;
         public const float BoxRadius = 30f;
         public const float CollisionSlowFactor = 0.5f;
         public const float KartSlowDuration = 1f;
@@ -907,9 +909,9 @@ namespace Kartamania
                     if (dist >= min || dist < 0.001f) continue;
 
                     Vector2 n = d / dist;
-                    k.Pos = o + n * min;
+                    k.Pos = o + n * (min + ObstacleBounceDistance);
                     float vn = Vector2.Dot(k.Vel, n);
-                    if (vn < 0f) k.Vel -= n * (vn * 1.5f);
+                    if (vn < 0f) k.Vel -= n * (vn * ObstacleBounceFactor);
                     ApplyCollisionSlow(k, ObstacleSlowDuration);
                     if (k.SpinTimer <= 0f)
                     {
