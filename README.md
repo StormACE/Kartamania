@@ -203,13 +203,11 @@ Le dossier `Images` contient les ressources du jeu, notamment `kart.png` et l’
 
 ## Réglages
 
-Le menu principal contient **Course rapide**, **Championnat**, **Piste**, **Joueur**, **Couleur du kart**, **Paramètres** et **Quitter**. Les lignes Piste, Joueur et Couleur du kart changent avec gauche/droite ; `Entrée` sur ces lignes lance aussi une course rapide.
+Le menu principal contient **Course rapide**, **Championnat**, **Piste**, **Joueur**, **Couleur du kart**, **Tours**, **Pilotes**, **Paramètres** et **Quitter**. Les lignes Piste, Joueur, Couleur du kart, Tours et Pilotes changent avec gauche/droite ; `Entrée` sur Piste, Joueur et Couleur du kart lance aussi une course rapide.
 
 Le sous-menu **Paramètres** permet de modifier :
 
 - la difficulté ;
-- le nombre de tours (`1` à `20`) ;
-- le nombre de pilotes (`1` à `10`) ;
 - la résolution ;
 - l’affichage : fenêtre, sans bordure ou plein écran ;
 - la VSync ;

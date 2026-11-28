@@ -16,10 +16,10 @@ namespace Kartamania
         enum State { Menu, Racing, Paused, Results, Standings, Podium }
         enum Row { Play, Championship, Settings, Track, Player, KartColor, Difficulty, Laps, Pilots, Resolution, Display, VSync, Fps, Language, Back, Quit }
 
-        static readonly Row[] MainRows = { Row.Play, Row.Championship, Row.Track, Row.Player, Row.KartColor, Row.Settings, Row.Quit };
+        static readonly Row[] MainRows = { Row.Play, Row.Championship, Row.Track, Row.Player, Row.KartColor, Row.Laps, Row.Pilots, Row.Settings, Row.Quit };
         static readonly Row[] SettingsRows =
         {
-            Row.Difficulty, Row.Laps, Row.Pilots, Row.Resolution, Row.Display,
+            Row.Difficulty, Row.Resolution, Row.Display,
             Row.VSync, Row.Fps, Row.Language, Row.Back,
         };
         static readonly float[] DifficultyStrength = { 0.88f, 1.16f, 1.33f };

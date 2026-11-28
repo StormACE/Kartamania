@@ -309,7 +309,7 @@ namespace Kartamania
         static TrackDef Etoile() => new TrackDef
         {
             Name = "Étoile du Nord",
-            Width = 220f,
+            Width = 250f,
             Scale = 1.25f,
             Grip = 0.70f,
             DenseTrees = true,
